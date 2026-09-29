@@ -25,6 +25,28 @@
   --radius: 1.5rem;
 }
 
+.dark {
+  --background: 20 22% 8%;
+  --foreground: 38 43% 96%;
+  --card: 20 20% 12%;
+  --card-foreground: 38 43% 96%;
+  --popover: 20 20% 12%;
+  --popover-foreground: 38 43% 96%;
+  --primary: 21 68% 52%;
+  --primary-foreground: 38 43% 96%;
+  --secondary: 20 18% 16%;
+  --secondary-foreground: 38 43% 96%;
+  --muted: 20 18% 16%;
+  --muted-foreground: 25 15% 65%;
+  --accent: 21 68% 22%;
+  --accent-foreground: 21 68% 65%;
+  --destructive: 8 60% 50%;
+  --destructive-foreground: 38 43% 96%;
+  --border: 22 20% 20%;
+  --input: 22 20% 20%;
+  --ring: 21 68% 52%;
+}
+
 @layer base {
   * {
     @apply border-cream-200;
@@ -40,9 +62,61 @@
     color: #2B211C;
   }
 
+  .dark body {
+    background-color: #171210;
+    color: #FAF5EE;
+  }
+
+  .dark ::selection {
+    background-color: #4A2B1D;
+    color: #FAF5EE;
+  }
+
   .font-display {
     font-variation-settings: "SOFT" 100;
   }
+}
+
+/* Cute Warm Cozy "Evening" Theme Overrides */
+.dark .bg-cream {
+  background-color: #171210 !important;
+}
+
+.dark .bg-cream-50,
+.dark .bg-cream-50\/70,
+.dark .bg-cream-50\/80,
+.dark .bg-cream-50\/90,
+.dark .bg-cream-50\/95 {
+  background-color: #231B17 !important;
+}
+
+.dark .bg-cream-100,
+.dark .bg-cream-100\/50,
+.dark .bg-cream-100\/60,
+.dark .bg-cream-100\/70,
+.dark .bg-cream-100\/80 {
+  background-color: #2D231E !important;
+}
+
+.dark .border-cream-200,
+.dark .border-cream-200\/60,
+.dark .border-cream-200\/70,
+.dark .border-cream-200\/80,
+.dark .border-cream-200\/90,
+.dark .border-cream-300 {
+  border-color: #382C25 !important;
+}
+
+.dark .text-ink {
+  color: #FAF5EE !important;
+}
+
+.dark .text-ink-soft {
+  color: #B3A59B !important;
+}
+
+.dark .text-ink-faint {
+  color: #8C7E74 !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

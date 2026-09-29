@@ -349,8 +349,19 @@ function CreateCallWizardContent() {
 
       if (callErr) throw callErr;
 
-      // Navigate to call detail page
-      router.push(`/calls/${callRow.id}`);
+      // If status is connecting (Right now), navigate to live call screen
+      if (status === "connecting") {
+        // Asynchronously notify call-server if running
+        fetch("/api/calls/start", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ callId: callRow.id }),
+        }).catch(() => {});
+
+        router.push(`/calls/${callRow.id}/live${isDemo ? "?demo=true" : ""}`);
+      } else {
+        router.push(`/calls/${callRow.id}`);
+      }
     } catch (err: unknown) {
       console.error("Error creating call:", err);
       setError(err instanceof Error ? err.message : "Something went wrong creating the call.");

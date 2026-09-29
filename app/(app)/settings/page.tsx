@@ -19,10 +19,15 @@ import {
   LogOut,
   Sparkles,
   Info,
+  Sun,
+  Moon,
+  Laptop,
 } from "lucide-react";
+import { useTheme } from "@/components/theme-provider";
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { theme, setTheme } = useTheme();
 
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
@@ -270,13 +275,51 @@ export default function SettingsPage() {
             </h2>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Chip variant="terracotta" size="default">
-              Light (Warm Cream)
-            </Chip>
-            <span className="text-xs text-ink-faint px-3 py-1.5 rounded-full bg-cream-100 border border-cream-200 cursor-not-allowed">
-              Evening · coming soon
-            </span>
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setTheme("light")}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl border text-small font-medium transition duration-150 ${
+                  theme === "light"
+                    ? "bg-terracotta text-cream-50 border-terracotta shadow-xs"
+                    : "bg-cream-100/60 text-ink-soft border-cream-200 hover:text-ink hover:bg-cream-100"
+                }`}
+              >
+                <Sun className="size-4" />
+                <span>Light (Warm Cream)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTheme("dark")}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl border text-small font-medium transition duration-150 ${
+                  theme === "dark"
+                    ? "bg-terracotta text-cream-50 border-terracotta shadow-xs"
+                    : "bg-cream-100/60 text-ink-soft border-cream-200 hover:text-ink hover:bg-cream-100"
+                }`}
+              >
+                <Moon className="size-4" />
+                <span>Evening (Cozy Dark)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTheme("system")}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl border text-small font-medium transition duration-150 ${
+                  theme === "system"
+                    ? "bg-terracotta text-cream-50 border-terracotta shadow-xs"
+                    : "bg-cream-100/60 text-ink-soft border-cream-200 hover:text-ink hover:bg-cream-100"
+                }`}
+              >
+                <Laptop className="size-4" />
+                <span>System</span>
+              </button>
+            </div>
+
+            <p className="text-small text-ink-faint">
+              Evening wraps your dashboard in a cozy warm cocoa theme inspired by quiet nights by the fire.
+            </p>
           </div>
         </Card>
 

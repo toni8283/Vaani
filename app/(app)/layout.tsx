@@ -14,6 +14,8 @@ import {
   Search,
   LogOut,
   Plus,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { Button } from "@/components/ui/button";
@@ -22,6 +24,7 @@ import { GuestBanner } from "@/components/app/guest-banner";
 import { CommandPalette } from "@/components/app/command-palette";
 import { PersonDialog, type PersonRecord } from "@/components/app/person-dialog";
 import { createClient } from "@/lib/supabase/client";
+import { useTheme } from "@/components/theme-provider";
 
 const NAV_ITEMS = [
   { label: "Home", href: "/home", icon: Home },
@@ -37,6 +40,7 @@ export default function AppLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { theme, setTheme, resolvedTheme } = useTheme();
 
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [addPersonOpen, setAddPersonOpen] = useState(false);
@@ -194,8 +198,22 @@ export default function AppLayout({
             </button>
           </div>
 
-          {/* Right: "New call" Primary Button */}
+          {/* Right: Theme Toggle & "New call" Primary Button */}
           <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+              title={resolvedTheme === "dark" ? "Switch to warm light mode" : "Switch to cozy evening mode"}
+              className="p-2 rounded-full border border-cream-200/80 bg-cream-100/60 hover:bg-cream-100 text-ink-soft hover:text-ink transition duration-150 focus:outline-none focus:ring-2 focus:ring-terracotta/30"
+              aria-label="Toggle theme"
+            >
+              {resolvedTheme === "dark" ? (
+                <Sun className="size-4 text-warm-amber" />
+              ) : (
+                <Moon className="size-4 text-ink-soft" />
+              )}
+            </button>
+
             <Link href="/calls/new">
               <Button
                 variant="primary"
