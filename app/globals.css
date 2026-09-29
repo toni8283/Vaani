@@ -107,6 +107,15 @@
   border-color: #382C25 !important;
 }
 
+.dark .bg-cream-200,
+.dark .bg-cream-200\/40,
+.dark .bg-cream-200\/50,
+.dark .bg-cream-200\/60,
+.dark .bg-cream-200\/70,
+.dark .bg-cream-200\/80 {
+  background-color: #2D231E !important;
+}
+
 .dark .text-ink {
   color: #FAF5EE !important;
 }
@@ -119,6 +128,125 @@
   color: #8C7E74 !important;
 }
 
+/* ==========================================================================
+   Logo Dark Mode Guarantee (100% Pure White in Evening / Dark Mode)
+   ========================================================================== */
+.dark .vaani-logo-mark {
+  filter: brightness(0) invert(1) !important;
+}
+
+.dark .vaani-logo-text {
+  color: #FFFFFF !important;
+}
+
+/* ==========================================================================
+   Dynamic Accent Palettes
+   Each palette provides RGB channel triplets:
+   --accent-primary : Main button, badge, and active icon color
+   --accent-hover   : Hover state for primary buttons
+   --accent-subtle  : Light tinted background (cards, chips, active nav items)
+   --accent-deep    : Deep rich text or border color
+   --accent-glow    : Radiant orb/glow gradient start
+   --accent-soft    : Soft warm gradient stop
+   ========================================================================== */
+
+/* 1. Amber (Sunrise Terracotta) — Default Signature */
+:root,
+[data-accent="amber"],
+html[data-accent="amber"] {
+  --accent-primary: 196 98 45;    /* #C4622D */
+  --accent-hover: 173 82 36;      /* #AD5224 */
+  --accent-subtle: 246 227 214;   /* #F6E3D6 */
+  --accent-deep: 143 63 23;       /* #8F3F17 */
+  --accent-glow: 242 166 90;      /* #F2A65A */
+  --accent-soft: 251 217 168;     /* #FBD9A8 */
+}
+
+/* 2. Purple (Lavender Glow) */
+[data-accent="purple"],
+html[data-accent="purple"] {
+  --accent-primary: 142 107 217;  /* #8E6BD9 */
+  --accent-hover: 123 85 202;    /* #7B55CA */
+  --accent-subtle: 240 235 252;   /* #F0EBFC */
+  --accent-deep: 101 67 181;      /* #6543B5 */
+  --accent-glow: 191 166 245;     /* #BFA6F5 */
+  --accent-soft: 217 206 247;     /* #D9CEF7 */
+}
+
+/* 3. Pink (Blush Rose) */
+[data-accent="pink"],
+html[data-accent="pink"] {
+  --accent-primary: 224 109 148;  /* #E06D94 */
+  --accent-hover: 209 85 128;    /* #D15580 */
+  --accent-subtle: 253 232 239;   /* #FDE8EF */
+  --accent-deep: 179 61 102;      /* #B33D66 */
+  --accent-glow: 247 168 196;     /* #F7A8C4 */
+  --accent-soft: 250 212 226;     /* #FAD4E2 */
+}
+
+/* 4. Blue (Sky Mist) */
+[data-accent="blue"],
+html[data-accent="blue"] {
+  --accent-primary: 75 143 226;   /* #4B8FE2 */
+  --accent-hover: 53 120 206;     /* #3578CE */
+  --accent-subtle: 235 243 254;   /* #EBF3FE */
+  --accent-deep: 37 99 235;       /* #2563EB */
+  --accent-glow: 147 197 253;     /* #93C5FD */
+  --accent-soft: 191 219 254;     /* #BFDBFE */
+}
+
+/* 5. White (Pearl Cloud) */
+[data-accent="white"],
+html[data-accent="white"] {
+  --accent-primary: 43 33 28;     /* #2B211C (charcoal pearl in light) */
+  --accent-hover: 23 18 16;       /* #171210 */
+  --accent-subtle: 239 233 223;   /* #EFE9DF */
+  --accent-deep: 23 18 16;        /* #171210 */
+  --accent-glow: 220 211 199;     /* #DCD3C7 */
+  --accent-soft: 250 245 238;     /* #FAF5EE */
+}
+
+/* Dark Mode Overrides for Subtle Backgrounds and Pearl White */
+.dark[data-accent="amber"],
+.dark [data-accent="amber"] {
+  --accent-subtle: 61 36 24;      /* #3D2418 */
+  --accent-deep: 251 217 168;     /* #FBD9A8 */
+}
+
+.dark[data-accent="purple"],
+.dark [data-accent="purple"] {
+  --accent-subtle: 46 33 74;      /* #2E214A */
+  --accent-deep: 217 206 247;     /* #D9CEF7 */
+}
+
+.dark[data-accent="pink"],
+.dark [data-accent="pink"] {
+  --accent-subtle: 69 30 46;      /* #451E2E */
+  --accent-deep: 250 212 226;     /* #FAD4E2 */
+}
+
+.dark[data-accent="blue"],
+.dark [data-accent="blue"] {
+  --accent-subtle: 26 43 71;      /* #1A2B47 */
+  --accent-deep: 191 219 254;     /* #BFDBFE */
+}
+
+.dark[data-accent="white"],
+.dark [data-accent="white"] {
+  --accent-primary: 250 245 238;  /* #FAF5EE (crisp pearl in dark) */
+  --accent-hover: 255 255 255;    /* #FFFFFF */
+  --accent-subtle: 45 35 30;      /* #2D231E */
+  --accent-deep: 255 255 255;     /* #FFFFFF */
+  --accent-glow: 255 255 255;
+  --accent-soft: 250 245 238;
+}
+
+/* Ensure button text is high contrast dark for pearl white in dark mode */
+.dark[data-accent="white"] .bg-terracotta,
+.dark [data-accent="white"] .bg-terracotta {
+  color: #171210 !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-breathe,
   .animate-ripple,
@@ -126,179 +254,4 @@
   .animate-blob {
     animation: none !important;
   }
-}
-
-/* ==========================================================================
-   Cute & Premium Accent Themes (Amber, Purple, Pink, Blue, White)
-   ========================================================================== */
-
-:root,
-[data-accent="amber"] {
-  --accent-primary: #C4622D;
-  --accent-hover: #AD5224;
-  --accent-subtle: #F6E3D6;
-  --accent-deep: #8F3F17;
-  --accent-glow: #F2A65A;
-  --accent-soft: #FBD9A8;
-}
-
-[data-accent="purple"] {
-  --accent-primary: #8E6BD9;
-  --accent-hover: #7B55CA;
-  --accent-subtle: #F0EBFC;
-  --accent-deep: #6543B5;
-  --accent-glow: #BFA6F5;
-  --accent-soft: #D9CEF7;
-}
-
-[data-accent="pink"] {
-  --accent-primary: #E06D94;
-  --accent-hover: #D15580;
-  --accent-subtle: #FDE8EF;
-  --accent-deep: #B33D66;
-  --accent-glow: #F7A8C4;
-  --accent-soft: #FAD4E2;
-}
-
-[data-accent="blue"] {
-  --accent-primary: #4B8FE2;
-  --accent-hover: #3578CE;
-  --accent-subtle: #EBF3FE;
-  --accent-deep: #2563EB;
-  --accent-glow: #93C5FD;
-  --accent-soft: #BFDBFE;
-}
-
-[data-accent="white"] {
-  --accent-primary: #2B211C;
-  --accent-hover: #171210;
-  --accent-subtle: #EFE9DF;
-  --accent-deep: #171210;
-  --accent-glow: #FAF5EE;
-  --accent-soft: #E5DDD0;
-}
-
-/* In Dark Mode adjustments */
-.dark[data-accent="purple"],
-.dark [data-accent="purple"] {
-  --accent-subtle: #2D2040;
-  --accent-deep: #D6C7FB;
-}
-
-.dark[data-accent="pink"],
-.dark [data-accent="pink"] {
-  --accent-subtle: #3E1E2A;
-  --accent-deep: #FBCFE0;
-}
-
-.dark[data-accent="blue"],
-.dark [data-accent="blue"] {
-  --accent-subtle: #192845;
-  --accent-deep: #BFDBFE;
-}
-
-.dark[data-accent="white"],
-.dark [data-accent="white"] {
-  --accent-primary: #FAF5EE;
-  --accent-hover: #FFFFFF;
-  --accent-subtle: #2D231E;
-  --accent-deep: #FFFFFF;
-  --accent-glow: #FFFFFF;
-  --accent-soft: #E0D5C7;
-}
-
-/* Dynamic Accent Applied to Classes */
-[data-accent="purple"] .bg-terracotta,
-[data-accent="pink"] .bg-terracotta,
-[data-accent="blue"] .bg-terracotta,
-[data-accent="white"] .bg-terracotta,
-[data-accent="purple"] button.bg-terracotta,
-[data-accent="pink"] button.bg-terracotta,
-[data-accent="blue"] button.bg-terracotta,
-[data-accent="white"] button.bg-terracotta {
-  background-color: var(--accent-primary) !important;
-}
-
-[data-accent="purple"] .hover\:bg-terracotta-hover:hover,
-[data-accent="pink"] .hover\:bg-terracotta-hover:hover,
-[data-accent="blue"] .hover\:bg-terracotta-hover:hover,
-[data-accent="white"] .hover\:bg-terracotta-hover:hover,
-[data-accent="purple"] button:hover.bg-terracotta,
-[data-accent="pink"] button:hover.bg-terracotta,
-[data-accent="blue"] button:hover.bg-terracotta,
-[data-accent="white"] button:hover.bg-terracotta {
-  background-color: var(--accent-hover) !important;
-}
-
-[data-accent="purple"] .text-terracotta,
-[data-accent="pink"] .text-terracotta,
-[data-accent="blue"] .text-terracotta,
-[data-accent="white"] .text-terracotta,
-[data-accent="purple"] svg.text-terracotta,
-[data-accent="pink"] svg.text-terracotta,
-[data-accent="blue"] svg.text-terracotta,
-[data-accent="white"] svg.text-terracotta {
-  color: var(--accent-primary) !important;
-}
-
-[data-accent="purple"] .text-terracotta-deep,
-[data-accent="pink"] .text-terracotta-deep,
-[data-accent="blue"] .text-terracotta-deep,
-[data-accent="white"] .text-terracotta-deep {
-  color: var(--accent-deep) !important;
-}
-
-[data-accent="purple"] .bg-terracotta-subtle,
-[data-accent="pink"] .bg-terracotta-subtle,
-[data-accent="blue"] .bg-terracotta-subtle,
-[data-accent="white"] .bg-terracotta-subtle {
-  background-color: var(--accent-subtle) !important;
-}
-
-[data-accent="purple"] .border-terracotta,
-[data-accent="pink"] .border-terracotta,
-[data-accent="blue"] .border-terracotta,
-[data-accent="white"] .border-terracotta {
-  border-color: var(--accent-primary) !important;
-}
-
-[data-accent="purple"] .border-terracotta\/20,
-[data-accent="pink"] .border-terracotta\/20,
-[data-accent="blue"] .border-terracotta\/20,
-[data-accent="white"] .border-terracotta\/20 {
-  border-color: color-mix(in srgb, var(--accent-primary) 20%, transparent) !important;
-}
-
-[data-accent="purple"] .border-terracotta\/30,
-[data-accent="pink"] .border-terracotta\/30,
-[data-accent="blue"] .border-terracotta\/30,
-[data-accent="white"] .border-terracotta\/30 {
-  border-color: color-mix(in srgb, var(--accent-primary) 30%, transparent) !important;
-}
-
-[data-accent="purple"] .bg-terracotta\/10,
-[data-accent="pink"] .bg-terracotta\/10,
-[data-accent="blue"] .bg-terracotta\/10,
-[data-accent="white"] .bg-terracotta\/10 {
-  background-color: color-mix(in srgb, var(--accent-primary) 12%, transparent) !important;
-}
-
-[data-accent="purple"] .focus-visible\:ring-terracotta\/40:focus-visible,
-[data-accent="pink"] .focus-visible\:ring-terracotta\/40:focus-visible,
-[data-accent="blue"] .focus-visible\:ring-terracotta\/40:focus-visible,
-[data-accent="white"] .focus-visible\:ring-terracotta\/40:focus-visible,
-[data-accent="purple"] .focus\:ring-terracotta\/30:focus,
-[data-accent="pink"] .focus\:ring-terracotta\/30:focus,
-[data-accent="blue"] .focus\:ring-terracotta\/30:focus,
-[data-accent="white"] .focus\:ring-terracotta\/30:focus {
-  --tw-ring-color: color-mix(in srgb, var(--accent-primary) 40%, transparent) !important;
-}
-
-/* White accent in dark mode */
-.dark[data-accent="white"] .bg-terracotta,
-.dark [data-accent="white"] .bg-terracotta,
-.dark[data-accent="white"] button.bg-terracotta,
-.dark [data-accent="white"] button.bg-terracotta {
-  background-color: #FAF5EE !important;
-  color: #171210 !important;
 }

@@ -113,10 +113,10 @@ export default function AppLayout({
               <Link href="/home" className="flex items-center gap-3 focus:outline-none">
                 {/* On desktop show full wordmark logo; on tablet show mark */}
                 <div className="hidden lg:block">
-                  <Logo variant="dark" size="sm" />
+                  <Logo size="sm" />
                 </div>
                 <div className="lg:hidden">
-                  <Logo variant="dark" size="sm" markOnly />
+                  <Logo size="sm" markOnly />
                 </div>
               </Link>
             </div>
@@ -136,18 +136,20 @@ export default function AppLayout({
                     title={item.label}
                     className={`group flex items-center justify-center lg:justify-start gap-3 px-3.5 py-2.5 rounded-2xl transition-all duration-200 ${
                       isActive
-                        ? "bg-terracotta/10 dark:bg-white/[0.12] text-terracotta dark:text-cream-50 font-semibold shadow-xs border border-terracotta/20 dark:border-white/10"
-                        : "text-ink-soft hover:bg-cream-200/50 dark:hover:bg-white/[0.08] hover:text-ink dark:hover:text-cream-50"
+                        ? "bg-terracotta/15 text-terracotta font-semibold shadow-xs border border-terracotta/30"
+                        : "text-ink-soft hover:bg-cream-200/50 dark:hover:bg-white/[0.08] hover:text-ink dark:hover:text-[#FAF5EE]"
                     }`}
                   >
                     <Icon
                       className={`size-5 shrink-0 transition-transform duration-200 ${
                         isActive
                           ? "text-terracotta scale-105"
-                          : "text-ink-soft group-hover:text-ink dark:group-hover:text-cream-50 group-hover:scale-105"
+                          : "text-ink-soft group-hover:text-ink dark:group-hover:text-[#FAF5EE] group-hover:scale-105"
                       }`}
                     />
-                    <span className="hidden lg:inline-block transition-colors duration-150">
+                    <span className={`hidden lg:inline-block transition-colors duration-150 ${
+                      isActive ? "text-terracotta" : ""
+                    }`}>
                       {item.label}
                     </span>
                   </Link>
@@ -189,7 +191,7 @@ export default function AppLayout({
           {/* Left: Logo on mobile, Search bar button on tablet/desktop */}
           <div className="flex items-center gap-3">
             <div className="md:hidden">
-              <Logo variant="dark" size="sm" href="/home" />
+              <Logo size="sm" href="/home" />
             </div>
 
             {/* ⌘K Trigger Button */}
@@ -222,7 +224,7 @@ export default function AppLayout({
               </button>
 
               {paletteOpen && (
-                <div className="absolute right-0 top-12 z-50 p-2 rounded-2xl bg-cream-50/95 dark:bg-[#231B17] border border-cream-200/80 dark:border-[#382C25] shadow-lg flex items-center gap-2 backdrop-blur-xl animate-in fade-in-0 zoom-in-95">
+                <div className="absolute right-0 top-12 z-50 p-2.5 rounded-2xl bg-cream-50/95 dark:bg-[#231B17] border border-cream-200/80 dark:border-[#382C25] shadow-lg flex items-center gap-2.5 backdrop-blur-xl animate-in fade-in-0 zoom-in-95">
                   {[
                     { id: "amber" as const, color: "#C4622D", label: "Amber" },
                     { id: "purple" as const, color: "#8E6BD9", label: "Purple" },
@@ -238,15 +240,15 @@ export default function AppLayout({
                         setPaletteOpen(false);
                       }}
                       title={`${opt.label} accent`}
-                      className={`size-6 rounded-full border flex items-center justify-center transition-transform hover:scale-115 ${
+                      className={`size-7 rounded-full border flex items-center justify-center transition-transform hover:scale-115 ${
                         accent === opt.id
                           ? "border-white ring-2 ring-terracotta scale-110 shadow-sm"
-                          : "border-black/20"
+                          : "border-black/25 dark:border-white/30"
                       }`}
                       style={{ backgroundColor: opt.color }}
                     >
                       {accent === opt.id && (
-                        <span className="size-1.5 rounded-full bg-white shadow-xs" />
+                        <span className={`size-2 rounded-full ${opt.id === "white" ? "bg-ink" : "bg-white"} shadow-xs`} />
                       )}
                     </button>
                   ))}

@@ -8,19 +8,28 @@ const config: Config = {
       colors: {
         cream: { DEFAULT: "#FAF6F0", 50: "#FFFCF8", 100: "#F4EDE3", 200: "#E8DFD3", 300: "#EFE7DB" },
         ink: { DEFAULT: "#2B211C", soft: "#6F6259", faint: "#9A8C81" },
-        terracotta: { DEFAULT: "#C4622D", hover: "#AD5224", subtle: "#F6E3D6", deep: "#8F3F17" },
-        amber: { glow: "#F2A65A", soft: "#FBD9A8" },
+        terracotta: {
+          DEFAULT: "rgb(var(--accent-primary) / <alpha-value>)",
+          hover: "rgb(var(--accent-hover) / <alpha-value>)",
+          subtle: "rgb(var(--accent-subtle) / <alpha-value>)",
+          deep: "rgb(var(--accent-deep) / <alpha-value>)",
+        },
+        amber: {
+          DEFAULT: "rgb(var(--accent-glow) / <alpha-value>)",
+          glow: "rgb(var(--accent-glow) / <alpha-value>)",
+          soft: "rgb(var(--accent-soft) / <alpha-value>)",
+        },
         sage: "#5E8C61",
         honey: "#D9A441",
         rust: "#B5483A",
         // shadcn compatibility tokens mapped to our tokens
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
+        ring: "rgb(var(--accent-primary) / <alpha-value>)",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         primary: {
-          DEFAULT: "hsl(var(--primary))",
+          DEFAULT: "rgb(var(--accent-primary) / <alpha-value>)",
           foreground: "hsl(var(--primary-foreground))",
         },
         secondary: {
