@@ -129,18 +129,22 @@ export default function AppLayout({
                     key={item.href}
                     href={item.href}
                     title={item.label}
-                    className={`flex items-center justify-center lg:justify-start gap-3 px-3 py-2.5 rounded-2xl transition duration-150 ${
+                    className={`group flex items-center justify-center lg:justify-start gap-3 px-3.5 py-2.5 rounded-2xl transition-all duration-200 ${
                       isActive
-                        ? "bg-cream-100 text-ink font-semibold shadow-xs"
-                        : "text-ink-soft hover:bg-cream-100/60 hover:text-ink"
+                        ? "bg-terracotta/10 dark:bg-white/[0.12] text-terracotta dark:text-cream-50 font-semibold shadow-xs border border-terracotta/20 dark:border-white/10"
+                        : "text-ink-soft hover:bg-cream-200/50 dark:hover:bg-white/[0.08] hover:text-ink dark:hover:text-cream-50"
                     }`}
                   >
                     <Icon
-                      className={`size-5 shrink-0 ${
-                        isActive ? "text-terracotta" : "text-ink-soft"
+                      className={`size-5 shrink-0 transition-transform duration-200 ${
+                        isActive
+                          ? "text-terracotta scale-105"
+                          : "text-ink-soft group-hover:text-ink dark:group-hover:text-cream-50 group-hover:scale-105"
                       }`}
                     />
-                    <span className="hidden lg:inline-block">{item.label}</span>
+                    <span className="hidden lg:inline-block transition-colors duration-150">
+                      {item.label}
+                    </span>
                   </Link>
                 );
               })}
@@ -164,9 +168,9 @@ export default function AppLayout({
             <button
               onClick={handleSignOut}
               title="Sign out"
-              className="w-full flex items-center justify-center lg:justify-start gap-3 px-3 py-2 rounded-xl text-small text-ink-soft hover:text-rust hover:bg-cream-100/60 transition-colors duration-150"
+              className="group w-full flex items-center justify-center lg:justify-start gap-3 px-3.5 py-2 rounded-xl text-small text-ink-soft hover:text-rust hover:bg-rust/10 transition-colors duration-150"
             >
-              <LogOut className="size-4 shrink-0" />
+              <LogOut className="size-4 shrink-0 transition-transform duration-150 group-hover:-translate-x-0.5" />
               <span className="hidden lg:inline-block">Sign out</span>
             </button>
           </div>

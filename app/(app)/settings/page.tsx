@@ -23,11 +23,19 @@ import {
   Moon,
   Laptop,
 } from "lucide-react";
-import { useTheme } from "@/components/theme-provider";
+import { useTheme, type Accent } from "@/components/theme-provider";
+
+const ACCENT_OPTIONS = [
+  { id: "amber" as Accent, label: "Amber", sub: "Sunrise", color: "#C4622D", glow: "rgba(242,166,90,0.5)" },
+  { id: "purple" as Accent, label: "Purple", sub: "Lavender", color: "#8E6BD9", glow: "rgba(191,166,245,0.5)" },
+  { id: "pink" as Accent, label: "Pink", sub: "Blush", color: "#E06D94", glow: "rgba(247,168,196,0.5)" },
+  { id: "blue" as Accent, label: "Blue", sub: "Sky Mist", color: "#4B8FE2", glow: "rgba(147,197,253,0.5)" },
+  { id: "white" as Accent, label: "White", sub: "Pearl", color: "#FAF5EE", glow: "rgba(250,245,238,0.5)" },
+];
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, accent, setAccent } = useTheme();
 
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
@@ -320,6 +328,50 @@ export default function SettingsPage() {
             <p className="text-small text-ink-faint">
               Evening wraps your dashboard in a cozy warm cocoa theme inspired by quiet nights by the fire.
             </p>
+
+            {/* Accent Color Customizer */}
+            <div className="pt-5 border-t border-cream-200/80 space-y-3">
+              <div>
+                <h3 className="text-small font-semibold text-ink">Dashboard accent</h3>
+                <p className="text-xs text-ink-faint mt-0.5">
+                  Choose a soft, premium accent tone for your buttons, active indicators, and glowing highlights.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 pt-1">
+                {ACCENT_OPTIONS.map((opt) => {
+                  const isSelected = accent === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setAccent(opt.id)}
+                      className={`flex items-center gap-2.5 p-3 rounded-2xl border text-small font-medium transition-all duration-150 ${
+                        isSelected
+                          ? "border-terracotta bg-cream-100/90 shadow-xs ring-2 ring-terracotta/30"
+                          : "border-cream-200/80 bg-cream-50/60 hover:bg-cream-100/70 hover:border-cream-300"
+                      }`}
+                    >
+                      <span
+                        className="size-4 rounded-full shrink-0 shadow-xs border border-black/10"
+                        style={{
+                          backgroundColor: opt.color,
+                          boxShadow: isSelected ? `0 0 10px ${opt.glow}` : undefined,
+                        }}
+                      />
+                      <div className="text-left min-w-0">
+                        <div className="text-xs font-semibold text-ink leading-tight truncate">
+                          {opt.label}
+                        </div>
+                        <div className="text-[10px] text-ink-faint leading-tight truncate">
+                          {opt.sub}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </Card>
 

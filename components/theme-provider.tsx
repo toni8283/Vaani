@@ -3,12 +3,15 @@
 import * as React from "react";
 import { createContext, useContext, useEffect, useState } from "react";
 
-type Theme = "light" | "dark" | "system";
+export type Theme = "light" | "dark" | "system";
+export type Accent = "amber" | "purple" | "pink" | "blue" | "white";
 
 interface ThemeContextType {
   theme: Theme;
   setTheme: (theme: Theme) => void;
   resolvedTheme: "light" | "dark";
+  accent: Accent;
+  setAccent: (accent: Accent) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -16,11 +19,16 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>("system");
   const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("light");
+  const [accent, setAccentState] = useState<Accent>("amber");
 
   useEffect(() => {
     // 1. Initial load from localStorage
     const savedTheme = (localStorage.getItem("vaani-theme") as Theme) || "system";
     setThemeState(savedTheme);
+
+    const savedAccent = (localStorage.getItem("vaani-accent") as Accent) || "amber";
+    setAccentState(savedAccent);
+    document.documentElement.setAttribute("data-accent", savedAccent);
 
     const applyTheme = (t: Theme) => {
       let isDark = false;
@@ -74,8 +82,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const setAccent = (newAccent: Accent) => {
+    setAccentState(newAccent);
+    localStorage.setItem("vaani-accent", newAccent);
+    document.documentElement.setAttribute("data-accent", newAccent);
+  };
+
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, resolvedTheme }}>
+    <ThemeContext.Provider
+      value={{ theme, setTheme, resolvedTheme, accent, setAccent }}
+    >
       {children}
     </ThemeContext.Provider>
   );
@@ -88,6 +104,8 @@ export function useTheme() {
       theme: "light" as Theme,
       setTheme: () => {},
       resolvedTheme: "light" as "light" | "dark",
+      accent: "amber" as Accent,
+      setAccent: () => {},
     };
   }
   return context;

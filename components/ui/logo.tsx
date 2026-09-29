@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 
 export interface LogoProps {
   className?: string;
-  variant?: "dark" | "light";
+  variant?: "dark" | "light" | "auto";
   size?: "sm" | "md" | "lg";
   markOnly?: boolean;
   href?: string;
@@ -14,17 +14,12 @@ export interface LogoProps {
 
 export function Logo({
   className,
-  variant = "dark",
+  variant = "auto",
   size = "md",
   markOnly = false,
   href,
   priority = false,
 }: LogoProps) {
-  const logoSrc =
-    variant === "light"
-      ? "/brand/vaani_logo_light.svg"
-      : "/brand/vaani_logo_dark.svg";
-
   const markSizeStyles = {
     sm: "w-7 h-7",
     md: "w-8 h-8",
@@ -37,10 +32,12 @@ export function Logo({
     lg: "text-3xl",
   };
 
+  const isAlwaysLight = variant === "light";
+
   const content = (
     <div
       className={cn(
-        "inline-flex items-center gap-2.5 select-none bg-transparent",
+        "inline-flex items-center gap-2.5 select-none bg-transparent group",
         className
       )}
     >
@@ -50,15 +47,40 @@ export function Logo({
           markSizeStyles[size]
         )}
       >
-        <Image
-          src={logoSrc}
-          alt="Vaani mark"
-          width={424}
-          height={363}
-          unoptimized
-          priority={priority}
-          className="w-full h-full object-contain pointer-events-none transition-transform duration-200 group-hover:scale-105"
-        />
+        {isAlwaysLight ? (
+          <Image
+            src="/brand/vaani_logo_light.svg"
+            alt="Vaani mark"
+            width={424}
+            height={363}
+            unoptimized
+            priority={priority}
+            className="w-full h-full object-contain pointer-events-none transition-transform duration-200 group-hover:scale-105"
+          />
+        ) : (
+          <>
+            {/* Visible in light mode */}
+            <Image
+              src="/brand/vaani_logo_dark.svg"
+              alt="Vaani mark"
+              width={424}
+              height={363}
+              unoptimized
+              priority={priority}
+              className="w-full h-full object-contain pointer-events-none transition-transform duration-200 group-hover:scale-105 block dark:hidden"
+            />
+            {/* Visible in dark mode */}
+            <Image
+              src="/brand/vaani_logo_light.svg"
+              alt="Vaani mark"
+              width={424}
+              height={363}
+              unoptimized
+              priority={priority}
+              className="w-full h-full object-contain pointer-events-none transition-transform duration-200 group-hover:scale-105 hidden dark:block"
+            />
+          </>
+        )}
       </div>
 
       {!markOnly && (
@@ -66,7 +88,9 @@ export function Logo({
           className={cn(
             "font-display font-medium tracking-tight leading-none transition-colors duration-200",
             textSizeStyles[size],
-            variant === "light" ? "text-cream-50" : "text-ink"
+            isAlwaysLight
+              ? "text-cream-50"
+              : "text-ink dark:text-cream-50"
           )}
         >
           Vaani
