@@ -167,42 +167,30 @@ export function speakSpeech(text: string, onEnd?: () => void) {
     return;
   }
 
-  try {
-    window.speechSynthesis.cancel();
-    if (window.speechSynthesis.paused) {
-      window.speechSynthesis.resume();
-    }
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = 0.95;
+  utterance.pitch = 1.05;
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.95;
-    utterance.pitch = 1.05;
+  const voices = window.speechSynthesis.getVoices();
+  const naturalVoice = voices.find(
+    (v) =>
+      v.lang.startsWith("en") &&
+      (v.name.includes("Natural") ||
+        v.name.includes("Samantha") ||
+        v.name.includes("Google") ||
+        v.name.includes("Karen") ||
+        v.name.includes("Serena"))
+  ) || voices.find((v) => v.lang.startsWith("en"));
 
-    const voices = window.speechSynthesis.getVoices();
-    const naturalVoice =
-      voices.find(
-        (v) =>
-          v.lang.startsWith("en") &&
-          (v.name.includes("Natural") ||
-            v.name.includes("Samantha") ||
-            v.name.includes("Google") ||
-            v.name.includes("Karen") ||
-            v.name.includes("Serena"))
-      ) ||
-      voices.find((v) => v.lang.startsWith("en")) ||
-      voices[0];
-
-    if (naturalVoice) {
-      utterance.voice = naturalVoice;
-    }
-
-    utterance.onend = () => onEnd?.();
-    utterance.onerror = () => onEnd?.();
-
-    window.speechSynthesis.speak(utterance);
-  } catch (err) {
-    console.warn("Speech synthesis error:", err);
-    onEnd?.();
+  if (naturalVoice) {
+    utterance.voice = naturalVoice;
   }
+
+  utterance.onend = () => onEnd?.();
+  utterance.onerror = () => onEnd?.();
+
+  window.speechSynthesis.speak(utterance);
 }
 
 /**
@@ -210,124 +198,6 @@ export function speakSpeech(text: string, onEnd?: () => void) {
  */
 export function stopSpeech() {
   if (typeof window !== "undefined" && "speechSynthesis" in window) {
-    try {
-      window.speechSynthesis.cancel();
-    } catch {}
-  }
-}
-
-export interface MicrophoneSession {
-  stream: MediaStream;
-  stop: () => void;
-  setMuted: (muted: boolean) => void;
-}
-
-/**
- * Requests microphone permission and streams real-time audio amplitude
- */
-export async function requestMicrophone(
-  onLevel?: (level: number) => void
-): Promise<MicrophoneSession | null> {
-  if (typeof window === "undefined" || !navigator.mediaDevices?.getUserMedia) {
-    return null;
-  }
-
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-      },
-    });
-
-    const ctx = getAudioContext();
-    let animId: number | null = null;
-
-    if (ctx) {
-      const source = ctx.createMediaStreamSource(stream);
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.3;
-      source.connect(analyser);
-
-      const buffer = new Uint8Array(analyser.frequencyBinCount);
-
-      const checkLevel = () => {
-        analyser.getByteFrequencyData(buffer);
-        let sum = 0;
-        for (let i = 0; i < buffer.length; i++) {
-          sum += buffer[i];
-        }
-        const avg = sum / buffer.length;
-        const normalized = Math.min(1, Math.max(0, avg / 110));
-        onLevel?.(normalized);
-        animId = requestAnimationFrame(checkLevel);
-      };
-
-      if (onLevel) {
-        animId = requestAnimationFrame(checkLevel);
-      }
-    }
-
-    return {
-      stream,
-      setMuted: (muted: boolean) => {
-        stream.getAudioTracks().forEach((track) => {
-          track.enabled = !muted;
-        });
-      },
-      stop: () => {
-        if (animId) cancelAnimationFrame(animId);
-        stream.getTracks().forEach((track) => track.stop());
-      },
-    };
-  } catch (err) {
-    console.warn("Could not access microphone:", err);
-    return null;
-  }
-}
-
-/**
- * Starts continuous browser speech recognition if supported
- */
-export function startSpeechRecognition(
-  onTranscript: (spokenText: string) => void
-): (() => void) | null {
-  if (typeof window === "undefined") return null;
-
-  const SpeechRec =
-    (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-
-  if (!SpeechRec) return null;
-
-  try {
-    const recognition = new SpeechRec();
-    recognition.continuous = true;
-    recognition.interimResults = false;
-    recognition.lang = "en-IN";
-
-    recognition.onresult = (event: any) => {
-      const last = event.results.length - 1;
-      const text = event.results[last][0]?.transcript?.trim();
-      if (text) {
-        onTranscript(text);
-      }
-    };
-
-    recognition.onerror = (err: any) => {
-      console.warn("Browser speech recognition error:", err);
-    };
-
-    recognition.start();
-
-    return () => {
-      try {
-        recognition.stop();
-      } catch {}
-    };
-  } catch (err) {
-    console.warn("Speech recognition not supported or initialization failed:", err);
-    return null;
+    window.speechSynthesis.cancel();
   }
 }

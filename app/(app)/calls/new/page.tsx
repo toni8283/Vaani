@@ -272,7 +272,16 @@ function CreateCallWizardContent() {
       let targetPersonId = personId;
 
       // 1. Create or reuse person
-      if (!targetPersonId) {
+      if (targetPersonId) {
+        // Ensure consent is confirmed for the selected person
+        await supabase
+          .from("people")
+          .update({
+            consent_confirmed: true,
+            phone_e164: phoneCheck.e164,
+          })
+          .eq("id", targetPersonId);
+      } else {
         // Check if person exists with same phone for this user
         const { data: existingPerson } = await supabase
           .from("people")

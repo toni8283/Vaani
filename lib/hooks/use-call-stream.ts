@@ -41,13 +41,6 @@ export function useCallStream({
   const simulatorRef = useRef<DemoCallSimulator | null>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const thinkingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const durationSecondsRef = useRef<number>(initialCall?.duration_seconds || 0);
-  const channelsRef = useRef<any[]>([]);
-
-  // Keep durationSecondsRef updated without triggering re-renders
-  useEffect(() => {
-    durationSecondsRef.current = durationSeconds;
-  }, [durationSeconds]);
 
   // Derive Orb State from status and level
   useEffect(() => {
@@ -102,14 +95,14 @@ export function useCallStream({
             summary: completedSummary,
             mood_note: completedSummary.mood_note,
             ended_at: new Date().toISOString(),
-            duration_seconds: durationSecondsRef.current || 68,
+            duration_seconds: durationSeconds || 68,
           })
           .eq("id", callId);
       } catch (err) {
         console.error("Failed to persist summary:", err);
       }
     },
-    [callId]
+    [callId, durationSeconds]
   );
 
   // Start Demo Simulation
@@ -165,19 +158,10 @@ export function useCallStream({
     sim.start();
   }, [persistSummaryToDb]);
 
-  const startDemoSimulationRef = useRef(startDemoSimulation);
-  useEffect(() => {
-    startDemoSimulationRef.current = startDemoSimulation;
-  }, [startDemoSimulation]);
-
   // Initialize call stream
   useEffect(() => {
     let isMounted = true;
     const supabase = createClient();
-
-    // Clean up any prior channels
-    channelsRef.current.forEach((ch) => supabase.removeChannel(ch));
-    channelsRef.current = [];
 
     const fetchCallAndInit = async () => {
       try {
@@ -194,12 +178,13 @@ export function useCallStream({
           if (isMounted) setCallData(data);
         }
 
-        const isExplicitDemo =
-          Boolean(forceDemo && !currentCall?.twilio_call_sid && currentCall?.status !== "connecting") ||
+        const isDemoCall =
+          forceDemo ||
+          currentCall?.is_demo ||
           process.env.NEXT_PUBLIC_DEMO_MODE === "true";
 
-        if (isExplicitDemo) {
-          startDemoSimulationRef.current();
+        if (isDemoCall) {
+          startDemoSimulation();
           return;
         }
 
@@ -207,16 +192,6 @@ export function useCallStream({
         if (currentCall) {
           setStatus(currentCall.status);
           if (currentCall.summary) setSummary(currentCall.summary);
-          if (currentCall.duration_seconds) setDurationSeconds(currentCall.duration_seconds);
-
-          if (currentCall.status === "failed") {
-            setErrorMessage(
-              "Twilio Trial Notice: Trial accounts can only ring verified phone numbers. Interactive Browser Voice Mode is active below — click Accept to talk to Vaani with your microphone!"
-            );
-            setPhoneOpen(true);
-            startDemoSimulationRef.current();
-            return;
-          }
 
           // 1. Fetch existing call events
           const { data: events } = await supabase
@@ -258,10 +233,9 @@ export function useCallStream({
 
                 if (updated.status === "failed") {
                   setErrorMessage(
-                    "Twilio Trial Notice: Trial accounts can only ring verified phone numbers. Interactive Browser Voice Mode is active below — click Accept to talk to Vaani with your microphone!"
+                    "Twilio call didn't go through (requires verified caller ID on trial). You can experience the full call right now in the Browser Phone Simulator!"
                   );
                   setPhoneOpen(true);
-                  startDemoSimulationRef.current();
                 }
               }
             )
@@ -312,13 +286,17 @@ export function useCallStream({
             })
             .subscribe();
 
-          channelsRef.current = [callChannel, eventsChannel, broadcastChannel];
+          return () => {
+            supabase.removeChannel(callChannel);
+            supabase.removeChannel(eventsChannel);
+            supabase.removeChannel(broadcastChannel);
+          };
         }
       } catch (err: unknown) {
         console.error("Call stream error:", err);
         // Fallback to simulation if network/auth fails
         if (isMounted) {
-          startDemoSimulationRef.current();
+          startDemoSimulation();
         }
       }
     };
@@ -327,8 +305,6 @@ export function useCallStream({
 
     return () => {
       isMounted = false;
-      channelsRef.current.forEach((ch) => supabase.removeChannel(ch));
-      channelsRef.current = [];
       if (simulatorRef.current) {
         simulatorRef.current.destroy();
       }
@@ -339,18 +315,13 @@ export function useCallStream({
         clearTimeout(thinkingTimeoutRef.current);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [callId, forceDemo]);
+  }, [callId, forceDemo, initialCall, startDemoSimulation]);
 
   const answerCall = useCallback(() => {
     if (simulatorRef.current) {
       simulatorRef.current.answerNow();
     } else {
       setStatus("live");
-      startDemoSimulationRef.current();
-      setTimeout(() => {
-        simulatorRef.current?.answerNow();
-      }, 60);
     }
   }, []);
 
@@ -368,20 +339,6 @@ export function useCallStream({
         .then(() => {});
     }
   }, [callId]);
-
-  const appendUserTurn = useCallback((text: string) => {
-    if (!text.trim()) return;
-    const newTurn: TurnEvent = {
-      id: `user-speech-${Date.now()}`,
-      speaker: "person",
-      text: text.trim(),
-      at_ms: (durationSecondsRef.current || 1) * 1000,
-      kind: "turn",
-    };
-    setCurrentTurn(newTurn);
-    setTranscript((prev) => [...prev, newTurn]);
-    setActiveSpeaker("person");
-  }, []);
 
   return {
     callData,
@@ -401,7 +358,6 @@ export function useCallStream({
     errorMessage,
     answerCall,
     endCall,
-    appendUserTurn,
     restartDemo: startDemoSimulation,
   };
 }
