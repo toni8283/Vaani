@@ -2,18 +2,20 @@
 
 import * as React from "react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { isValidPhoneNumber } from "libphonenumber-js";
-import { Phone, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Phone, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Toast } from "@/components/ui/toast";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 export function HeroPhoneForm() {
+  const router = useRouter();
   const [phone, setPhone] = useState("");
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = phone.trim();
 
@@ -22,10 +24,14 @@ export function HeroPhoneForm() {
       return;
     }
 
-    // Check with libphonenumber-js (fallback to international format if starts with +)
+    // Validate using libphonenumber-js
     let valid = false;
     try {
-      valid = isValidPhoneNumber(trimmed) || (trimmed.startsWith("+") ? isValidPhoneNumber(trimmed) : isValidPhoneNumber(trimmed, "IN") || isValidPhoneNumber(trimmed, "US"));
+      valid =
+        isValidPhoneNumber(trimmed) ||
+        (trimmed.startsWith("+")
+          ? isValidPhoneNumber(trimmed)
+          : isValidPhoneNumber(trimmed, "IN") || isValidPhoneNumber(trimmed, "US"));
     } catch {
       valid = false;
     }
@@ -35,11 +41,34 @@ export function HeroPhoneForm() {
       return;
     }
 
-    setError(null);
-    setToastMessage("Coming together in the next step");
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 4500);
+    try {
+      setLoading(true);
+      setError(null);
+      const supabase = createClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      // Sign in as guest if not already logged in
+      if (!session) {
+        await supabase.auth.signInAnonymously();
+      }
+
+      // Save number to sessionStorage key "vaani:pending-phone"
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem("vaani:pending-phone", trimmed);
+      }
+
+      router.push("/welcome");
+    } catch {
+      // Even if offline, save phone and proceed
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem("vaani:pending-phone", trimmed);
+      }
+      router.push("/welcome");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -52,7 +81,9 @@ export function HeroPhoneForm() {
         onSubmit={handleSubmit}
         className={cn(
           "relative flex items-center p-1.5 rounded-full bg-cream-50/90 backdrop-blur-xl border border-cream-200 shadow-sm transition-all duration-200",
-          error ? "border-rust ring-1 ring-rust/30" : "focus-within:border-terracotta focus-within:ring-2 focus-within:ring-terracotta/25"
+          error
+            ? "border-rust ring-1 ring-rust/30"
+            : "focus-within:border-terracotta focus-within:ring-2 focus-within:ring-terracotta/25"
         )}
       >
         <div className="pl-4 pr-2 text-ink-faint">
@@ -69,8 +100,14 @@ export function HeroPhoneForm() {
           className="w-full bg-transparent text-body text-ink placeholder:text-ink-faint focus:outline-none py-1.5"
           aria-label="Phone number to receive a test call"
         />
-        <Button type="submit" variant="primary" size="default" className="shrink-0 h-10 px-5 rounded-full">
-          <span>Call me</span>
+        <Button
+          type="submit"
+          variant="primary"
+          size="default"
+          disabled={loading}
+          className="shrink-0 h-10 px-5 rounded-full font-medium"
+        >
+          <span>{loading ? "Connecting…" : "Call me"}</span>
           <ArrowRight className="size-3.5 ml-1.5 hidden sm:inline" />
         </Button>
       </form>
@@ -79,18 +116,6 @@ export function HeroPhoneForm() {
         <p className="mt-2 text-caption text-rust font-medium text-left px-4 animate-in fade-in duration-200">
           {error}
         </p>
-      )}
-
-      {/* Floating Glass Toast Notification on submission */}
-      {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
-          <Toast
-            title={toastMessage}
-            description="Our live telephony bridge connects in Phase 3."
-            variant="success"
-            onClose={() => setToastMessage(null)}
-          />
-        </div>
       )}
     </div>
   );

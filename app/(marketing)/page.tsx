@@ -29,6 +29,8 @@ import { HeroPhoneForm } from "@/components/marketing/hero-phone-form";
 import { LiveCallPreview } from "@/components/marketing/live-call-preview";
 import { DemoTranscript } from "@/components/marketing/demo-transcript";
 
+import { GuestButton } from "@/components/auth/guest-button";
+
 export default function LandingPage() {
   return (
     <div className="relative overflow-hidden w-full">
@@ -516,9 +518,7 @@ export default function LandingPage() {
               <Button variant="primary" size="lg" asChild className="h-14 px-8 text-lg font-semibold rounded-full shadow-md">
                 <Link href="/signup">Set up Vaani</Link>
               </Button>
-              <Button variant="quiet" size="lg" asChild className="text-ink-soft hover:text-ink font-medium">
-                <Link href="/login">Continue as guest</Link>
-              </Button>
+              <GuestButton size="lg" className="text-ink-soft hover:text-ink font-medium" />
             </div>
           </BlurReveal>
         </div>
