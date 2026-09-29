@@ -107,15 +107,6 @@
   border-color: #382C25 !important;
 }
 
-.dark .bg-cream-200,
-.dark .bg-cream-200\/40,
-.dark .bg-cream-200\/50,
-.dark .bg-cream-200\/60,
-.dark .bg-cream-200\/70,
-.dark .bg-cream-200\/80 {
-  background-color: #2D231E !important;
-}
-
 .dark .text-ink {
   color: #FAF5EE !important;
 }
@@ -126,15 +117,6 @@
 
 .dark .text-ink-faint {
   color: #8C7E74 !important;
-}
-
-/* Logo White in Dark Mode (100% Guaranteed) */
-.dark .vaani-logo-mark {
-  filter: brightness(0) invert(1) !important;
-}
-
-.dark .vaani-logo-text {
-  color: #FFFFFF !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

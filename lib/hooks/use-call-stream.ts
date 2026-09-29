@@ -276,14 +276,17 @@ export function useCallStream({
             .subscribe();
 
           // 4. Supabase Broadcast for ~10Hz speaker & amplitude level
+          const handleBroadcastLevel = (payload: any) => {
+            if (!isMounted) return;
+            const { speaker, level: lvl } = payload.payload || {};
+            if (typeof lvl === "number") setLevel(lvl);
+            if (speaker) setActiveSpeaker(speaker);
+          };
+
           const broadcastChannel = supabase
             .channel(`call:${callId}`)
-            .on("broadcast", { event: "amplitude" }, (payload: any) => {
-              if (!isMounted) return;
-              const { speaker, level: lvl } = payload.payload || {};
-              if (typeof lvl === "number") setLevel(lvl);
-              if (speaker) setActiveSpeaker(speaker);
-            })
+            .on("broadcast", { event: "amplitude" }, handleBroadcastLevel)
+            .on("broadcast", { event: "level" }, handleBroadcastLevel)
             .subscribe();
 
           return () => {

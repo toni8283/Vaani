@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
-    const { callId } = await req.json();
+    const { callId, force } = await req.json();
 
     if (!callId) {
       return NextResponse.json({ error: "callId is required" }, { status: 400 });
@@ -11,17 +11,17 @@ export async function POST(req: NextRequest) {
     const callServerUrl =
       process.env.CALL_SERVER_URL ||
       process.env.NEXT_PUBLIC_CALL_SERVER_URL ||
-      "http://localhost:3001";
+      "http://localhost:8080";
 
     // Attempt to contact call-server
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3500);
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
 
       const res = await fetch(`${callServerUrl}/calls/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ callId }),
+        body: JSON.stringify({ callId, force }),
         signal: controller.signal,
       });
 
