@@ -102,9 +102,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const setAccent = (newAccent: Accent) => {
     setAccentState(newAccent);
     localStorage.setItem("vaani-accent", newAccent);
-    if (isDashboard) {
-      document.documentElement.setAttribute("data-accent", newAccent);
-    }
+    document.documentElement.setAttribute("data-accent", newAccent);
   };
 
   return (
@@ -130,3 +128,4 @@ export function useTheme() {
   }
   return context;
 }
+

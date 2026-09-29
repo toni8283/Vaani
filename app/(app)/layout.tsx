@@ -100,7 +100,10 @@ export default function AppLayout({
   };
 
   return (
-    <div className="min-h-screen bg-cream text-ink flex flex-col md:flex-row selection:bg-terracotta-subtle selection:text-ink">
+    <div
+      data-accent={accent}
+      className="min-h-screen bg-cream text-ink flex flex-col md:flex-row selection:bg-terracotta-subtle selection:text-ink"
+    >
       {/* 1. SIDEBAR: 72px on tablet (md), 256px on desktop (lg), hidden on mobile */}
       <aside className="hidden md:flex md:w-[72px] lg:w-64 border-r border-cream-200 bg-cream-50/80 backdrop-blur-xl flex-col justify-between shrink-0 sticky top-0 h-screen z-30 transition-all duration-200 ease-calm">
         <div className="flex flex-col h-full justify-between p-3 lg:p-5">
