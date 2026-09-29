@@ -3,11 +3,10 @@
 import * as React from "react";
 import { motion } from "framer-motion";
 import { MeshGradient } from "@/components/marketing/mesh-gradient";
+import { VaaniOrb } from "@/components/call/vaani-orb";
 import { AvatarOrb } from "@/components/ui/avatar-orb";
-import { Illustration } from "@/components/ui/illustration";
 import { Chip } from "@/components/ui/chip";
 import { BlurReveal } from "@/components/motion/blur-reveal";
-import { Sparkles, Check, ArrowRight } from "lucide-react";
 
 interface Turn {
   speaker: "Vaani" | "Maa";
@@ -89,11 +88,6 @@ export function DemoTranscript() {
     <div className="grid lg:grid-cols-2 gap-8 items-start">
       {/* Left Column: Live Transcript Card */}
       <div className="relative rounded-card bg-cream-50 border border-cream-200 shadow-sm p-6 md:p-8 overflow-hidden">
-        {/* Peeking Sofa Illustration in corner */}
-        <div className="absolute -top-3 -right-3 w-28 h-28 opacity-80 pointer-events-none">
-          <Illustration name="demo-sofa" className="w-full h-full rounded-2xl" />
-        </div>
-
         {/* Header */}
         <div className="flex items-center gap-3 pb-6 border-b border-cream-200 relative z-10">
           <AvatarOrb initials="MA" size="md" />
@@ -111,7 +105,7 @@ export function DemoTranscript() {
               initial={{ opacity: 0, y: 12, filter: "blur(8px)" }}
               whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
               viewport={{ once: true, margin: "-40px" }}
-              transition={{ duration: 0.6, delay: i * 0.1, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: 0.6, delay: i * 0.08, ease: [0.22, 1, 0.36, 1] }}
               className="flex items-start gap-3"
             >
               <div className="pt-1 shrink-0">
@@ -139,50 +133,48 @@ export function DemoTranscript() {
         </div>
       </div>
 
-      {/* Right Column: Four-Block Summary Card */}
-      <BlurReveal delay={0.3} className="h-full">
-        <div className="rounded-card bg-cream-50 border border-cream-200 shadow-md p-6 md:p-8 overflow-hidden h-full flex flex-col justify-between">
-          <div>
-            {/* Mini Mesh Gradient Header */}
-            <div className="relative -mx-6 -mt-6 md:-mx-8 md:-mt-8 mb-6 h-20 overflow-hidden border-b border-cream-200 p-6 flex items-center justify-between">
-              <MeshGradient />
-              <div className="relative z-10 flex items-center gap-3">
-                <AvatarOrb initials="VN" size="sm" />
-                <span className="font-display text-h5 text-ink">Call Summary</span>
+      {/* Right Column: Four-Block Summary Card (sized to content, items-start) */}
+      <BlurReveal delay={0.2}>
+        <div className="rounded-card bg-cream-50 border border-cream-200 shadow-md p-6 md:p-8 overflow-hidden">
+          {/* Mini Mesh Gradient Header */}
+          <div className="relative -mx-6 -mt-6 md:-mx-8 md:-mt-8 mb-6 h-18 overflow-hidden border-b border-cream-200 p-6 flex items-center justify-between">
+            <MeshGradient />
+            <div className="relative z-10 flex items-center gap-3">
+              <div className="size-8 rounded-full flex items-center justify-center overflow-hidden">
+                <VaaniOrb state="idle" className="!size-8" />
               </div>
-              <Chip variant="glass" icon={<Check className="size-3 text-sage" />} className="relative z-10">
-                Processed
-              </Chip>
-            </div>
-
-            {/* Note to you */}
-            <div className="p-4 rounded-2xl bg-cream-100 border border-cream-200 mb-6">
-              <p className="text-caption font-semibold text-terracotta uppercase tracking-wide mb-1">
-                Vaani&apos;s note to you
-              </p>
-              <p className="text-small text-ink font-display italic">
-                &ldquo;She sounded cheerful, and she laughed twice. She&apos;d love a real call this weekend.&rdquo;
-              </p>
-            </div>
-
-            {/* Four Summary Blocks with exact labels */}
-            <div className="space-y-5">
-              {summaryBlocks.map((block, idx) => (
-                <BlurReveal key={block.label} delay={0.4 + idx * 0.1} y={10} blur={6}>
-                  <div className="space-y-1 pb-4 border-b border-cream-200 last:border-b-0 last:pb-0">
-                    <p className="text-caption font-bold tracking-wide uppercase text-ink-soft">
-                      {block.label}
-                    </p>
-                    <p className="text-body text-ink leading-relaxed">{block.content}</p>
-                  </div>
-                </BlurReveal>
-              ))}
+              <span className="font-display text-h5 text-ink">Call Summary</span>
             </div>
           </div>
 
+          {/* Note to you */}
+          <div className="p-4 rounded-2xl bg-cream-100 border border-cream-200 mb-6">
+            <p className="text-caption font-semibold text-terracotta uppercase tracking-wide mb-1">
+              Vaani&apos;s note to you
+            </p>
+            <p className="text-small text-ink font-display italic">
+              &ldquo;She sounded cheerful, and she laughed twice. She&apos;d love a real call this weekend.&rdquo;
+            </p>
+          </div>
+
+          {/* Four Summary Blocks with exact labels */}
+          <div className="space-y-4">
+            {summaryBlocks.map((block, idx) => (
+              <BlurReveal key={block.label} delay={0.25 + idx * 0.08} y={8} blur={6}>
+                <div className="space-y-1 pb-3.5 border-b border-cream-200 last:border-b-0 last:pb-0">
+                  <p className="text-caption font-bold tracking-wide uppercase text-ink-soft">
+                    {block.label}
+                  </p>
+                  <p className="text-body text-ink leading-relaxed">{block.content}</p>
+                </div>
+              </BlurReveal>
+            ))}
+          </div>
+
+          {/* Footer: Sent to your phone + Summary ready chip */}
           <div className="pt-6 mt-6 border-t border-cream-200 flex items-center justify-between">
-            <span className="text-caption text-ink-faint">Sent via SMS to judge&apos;s phone</span>
-            <Chip variant="sage">Summary Ready</Chip>
+            <span className="text-caption text-ink-faint">Sent to your phone</span>
+            <Chip variant="sage">Summary ready</Chip>
           </div>
         </div>
       </BlurReveal>

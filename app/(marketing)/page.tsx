@@ -9,14 +9,12 @@ import {
   BadgeCheck,
   SlidersHorizontal,
   BookHeart,
-  ArrowRight,
   Check,
-  Sparkles,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { IconTile } from "@/components/ui/icon-tile";
 import { Illustration } from "@/components/ui/illustration";
 import {
@@ -29,7 +27,6 @@ import { BlurReveal, BlurWords } from "@/components/motion/blur-reveal";
 import { MeshGradient } from "@/components/marketing/mesh-gradient";
 import { HeroPhoneForm } from "@/components/marketing/hero-phone-form";
 import { LiveCallPreview } from "@/components/marketing/live-call-preview";
-import { HowItWorksConnector } from "@/components/marketing/how-it-works-connector";
 import { DemoTranscript } from "@/components/marketing/demo-transcript";
 
 export default function LandingPage() {
@@ -53,9 +50,11 @@ export default function LandingPage() {
             </div>
           </BlurReveal>
 
-          {/* Main Headline */}
-          <h1 className="font-display text-[44px] md:text-display-xl max-w-4xl mx-auto text-ink font-medium tracking-tight leading-[1.05]">
-            <BlurWords text="Call home. Even when you can't." />
+          {/* Main Headline (breaks after "Call home." with text-balance) */}
+          <h1 className="font-display text-[44px] md:text-display-xl max-w-4xl mx-auto text-ink font-medium tracking-tight leading-[1.08] text-balance">
+            <BlurWords text="Call home." />
+            <br className="hidden md:block" />
+            <BlurWords text="Even when you can't." delay={0.15} />
           </h1>
 
           {/* Subline Body */}
@@ -112,11 +111,8 @@ export default function LandingPage() {
           2. THE PROBLEM (Text-only, high emotion whitespace)
          ──────────────────────────────────────────────────────────── */}
       <section id="problem" className="py-32 md:py-48 bg-cream text-center relative overflow-hidden">
-        {/* Subtle dot grid & night desk illustration (30% opacity) */}
+        {/* Subtle dot grid */}
         <div className="absolute inset-0 pointer-events-none [background-image:radial-gradient(rgba(43,33,28,0.1)_1px,transparent_1px)] [background-size:22px_22px] [mask-image:radial-gradient(ellipse_at_center,black_20%,transparent_75%)]" />
-        <div className="absolute bottom-6 right-6 md:bottom-12 md:right-16 w-36 h-36 opacity-30 pointer-events-none">
-          <Illustration name="problem-desk" className="w-full h-full rounded-2xl" />
-        </div>
 
         <div className="max-w-prose mx-auto px-5 relative z-10 space-y-6">
           <h2 className="font-display text-h3 md:text-display-lg text-ink font-medium tracking-tight">
@@ -156,7 +152,7 @@ export default function LandingPage() {
       </section>
 
       {/* ────────────────────────────────────────────────────────────
-          3. HOW IT WORKS (Bento row + Dotted SVG connector)
+          3. HOW IT WORKS (Bento row, no stray line)
          ──────────────────────────────────────────────────────────── */}
       <section id="how-it-works" className="py-24 md:py-36 bg-cream-100 relative">
         <div className="max-w-content mx-auto px-5 md:px-8">
@@ -171,61 +167,57 @@ export default function LandingPage() {
             </h2>
           </div>
 
-          {/* Bento Cards Container with Dotted Arc Connector */}
-          <div className="relative">
-            <HowItWorksConnector />
-
-            <div className="grid md:grid-cols-3 gap-6 relative z-20">
-              {/* Step 1 */}
-              <BlurReveal delay={0.1}>
-                <div className="h-full rounded-[28px] bg-cream-50 border border-cream-200 p-8 overflow-hidden flex flex-col justify-between shadow-sm hover:shadow-md hover:-translate-y-1 transition duration-200 ease-calm">
-                  <div>
-                    <div className="h-44 w-full mb-6 flex items-center justify-center">
-                      <Illustration name="step-1-contact" className="w-full h-full" />
-                    </div>
-                    <span className="font-display text-h3 text-terracotta block mb-2">01</span>
-                    <h3 className="font-display text-h4 text-ink mb-2">Tell Vaani who.</h3>
-                    <p className="text-body text-ink-soft leading-relaxed">
-                      Add a name and a number. Choose a voice that feels right for them.
-                    </p>
+          {/* Bento Cards Container */}
+          <div className="grid md:grid-cols-3 gap-6 relative z-10">
+            {/* Step 1 */}
+            <BlurReveal delay={0.1}>
+              <div className="h-full rounded-[28px] bg-cream-50 border border-cream-200 p-8 overflow-hidden flex flex-col justify-between shadow-sm hover:shadow-md hover:-translate-y-1 transition duration-200 ease-calm">
+                <div>
+                  <div className="h-44 w-full mb-6 flex items-center justify-center">
+                    <Illustration name="step-1-contact" className="w-full h-full" />
                   </div>
+                  <span className="font-display text-h3 text-terracotta block mb-2">01</span>
+                  <h3 className="font-display text-h4 text-ink mb-2">Tell Vaani who.</h3>
+                  <p className="text-body text-ink-soft leading-relaxed">
+                    Add a name and a number. Choose a voice that feels right for them.
+                  </p>
                 </div>
-              </BlurReveal>
+              </div>
+            </BlurReveal>
 
-              {/* Step 2 */}
-              <BlurReveal delay={0.25}>
-                <div className="h-full rounded-[28px] bg-cream-50 border border-cream-200 p-8 overflow-hidden flex flex-col justify-between shadow-sm hover:shadow-md hover:-translate-y-1 transition duration-200 ease-calm">
-                  <div>
-                    <div className="h-44 w-full mb-6 flex items-center justify-center">
-                      <Illustration name="step-2-note" className="w-full h-full" />
-                    </div>
-                    <span className="font-display text-h3 text-terracotta block mb-2">02</span>
-                    <h3 className="font-display text-h4 text-ink mb-2">Tell Vaani what matters.</h3>
-                    <p className="text-body text-ink-soft leading-relaxed">
-                      Write it the way you&apos;d tell a friend: &ldquo;Ask about her knee. Say I&apos;ll
-                      visit in March.&rdquo;
-                    </p>
+            {/* Step 2 */}
+            <BlurReveal delay={0.25}>
+              <div className="h-full rounded-[28px] bg-cream-50 border border-cream-200 p-8 overflow-hidden flex flex-col justify-between shadow-sm hover:shadow-md hover:-translate-y-1 transition duration-200 ease-calm">
+                <div>
+                  <div className="h-44 w-full mb-6 flex items-center justify-center">
+                    <Illustration name="step-2-note" className="w-full h-full" />
                   </div>
+                  <span className="font-display text-h3 text-terracotta block mb-2">02</span>
+                  <h3 className="font-display text-h4 text-ink mb-2">Tell Vaani what matters.</h3>
+                  <p className="text-body text-ink-soft leading-relaxed">
+                    Write it the way you&apos;d tell a friend: &ldquo;Ask about her knee. Say I&apos;ll
+                    visit in March.&rdquo;
+                  </p>
                 </div>
-              </BlurReveal>
+              </div>
+            </BlurReveal>
 
-              {/* Step 3 */}
-              <BlurReveal delay={0.4}>
-                <div className="h-full rounded-[28px] bg-cream-50 border border-cream-200 p-8 overflow-hidden flex flex-col justify-between shadow-sm hover:shadow-md hover:-translate-y-1 transition duration-200 ease-calm">
-                  <div>
-                    <div className="h-44 w-full mb-6 flex items-center justify-center">
-                      <Illustration name="step-3-envelope" className="w-full h-full" />
-                    </div>
-                    <span className="font-display text-h3 text-terracotta block mb-2">03</span>
-                    <h3 className="font-display text-h4 text-ink mb-2">Get the story back.</h3>
-                    <p className="text-body text-ink-soft leading-relaxed">
-                      A short, warm summary lands the moment they hang up, with what to remember and what
-                      to ask next.
-                    </p>
+            {/* Step 3 */}
+            <BlurReveal delay={0.4}>
+              <div className="h-full rounded-[28px] bg-cream-50 border border-cream-200 p-8 overflow-hidden flex flex-col justify-between shadow-sm hover:shadow-md hover:-translate-y-1 transition duration-200 ease-calm">
+                <div>
+                  <div className="h-44 w-full mb-6 flex items-center justify-center">
+                    <Illustration name="step-3-envelope" className="w-full h-full" />
                   </div>
+                  <span className="font-display text-h3 text-terracotta block mb-2">03</span>
+                  <h3 className="font-display text-h4 text-ink mb-2">Get the story back.</h3>
+                  <p className="text-body text-ink-soft leading-relaxed">
+                    A short, warm summary lands the moment they hang up, with what to remember and what
+                    to ask next.
+                  </p>
                 </div>
-              </BlurReveal>
-            </div>
+              </div>
+            </BlurReveal>
           </div>
 
           {/* Section CTA */}
@@ -256,7 +248,7 @@ export default function LandingPage() {
               A real-feeling five-minute chat with Maa, shrunk into the four things you actually need to know.
             </p>
             <div className="pt-2">
-              <Button variant="secondary" asChild size="default">
+              <Button variant="primary" asChild size="default">
                 <a href="#hero">Let Vaani call you</a>
               </Button>
             </div>
@@ -490,18 +482,22 @@ export default function LandingPage() {
       </section>
 
       {/* ────────────────────────────────────────────────────────────
-          8. FINAL CTA SECTION (Full-bleed Dawn MeshGradient)
+          8. FINAL CTA SECTION (Full-bleed Dawn MeshGradient with fades)
          ──────────────────────────────────────────────────────────── */}
       <section className="relative overflow-hidden py-32 md:py-48 text-center bg-cream">
         <MeshGradient />
 
-        {/* Big calm orb background blur */}
+        {/* Cream fades at top and bottom */}
+        <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-cream to-transparent pointer-events-none z-10" />
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-cream to-transparent pointer-events-none z-10" />
+
+        {/* Big calm orb background glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-96 rounded-full bg-amber-soft/40 blur-3xl pointer-events-none" />
 
-        <div className="max-w-content mx-auto px-5 md:px-8 relative z-10 space-y-6">
+        <div className="max-w-content mx-auto px-5 md:px-8 relative z-20 space-y-6">
           <BlurReveal delay={0.1}>
-            <div className="w-28 h-28 mx-auto mb-2 flex items-center justify-center">
-              <Illustration name="cta-phones" className="w-full h-full rounded-2xl" />
+            <div className="w-[220px] mx-auto mb-4 flex items-center justify-center">
+              <Illustration name="cta-phones" />
             </div>
           </BlurReveal>
 

@@ -1,3 +1,4 @@
+import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -40,9 +41,10 @@ export function Logo({
     >
       <Image
         src={logoSrc}
-        alt="Vaani Logo"
+        alt="Vaani"
         width={424}
         height={363}
+        unoptimized
         priority={priority}
         className={cn(
           "w-full h-full object-contain pointer-events-none transition-transform duration-200",
