@@ -19,6 +19,7 @@ Follow these exact steps to run the SQL migration in your Supabase project:
 
 4. **Paste the Migration Script**:
    Open [`supabase/migrations/001_init.sql`](./supabase/migrations/001_init.sql) in this repository, copy the entire contents, and paste them into the SQL Editor input area.
+   Next, run [`supabase/migrations/002_demo.sql`](./supabase/migrations/002_demo.sql) to add the `is_demo` column to `calls`.
 
 5. **Run the Script**:
    Click the green **Run** button (or press `Cmd + Enter` / `Ctrl + Enter`).
@@ -28,7 +29,7 @@ Follow these exact steps to run the SQL migration in your Supabase project:
    - Go to **Table Editor** in the left sidebar and confirm that all 5 tables are created:
      - `profiles` (with `onboarded` column)
      - `people`
-     - `calls`
+     - `calls` (with `is_demo` column)
      - `call_events`
      - `memories`
    - Go to **Authentication -> Providers -> Email** and ensure Email provider is enabled.
@@ -39,4 +40,10 @@ Follow these exact steps to run the SQL migration in your Supabase project:
    ```bash
    cp .env.example .env.local
    ```
-   Fill in your `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` from **Project Settings -> API**.
+   Fill in your `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` from **Project Settings -> API**.
+
+8. **Seed Sample Data (Optional)**:
+   Once signed up, you can seed realistic calls, memories, and schedule for your account:
+   ```bash
+   npm run seed -- your-email@example.com
+   ```

@@ -1,76 +1,265 @@
 "use client";
 
 import * as React from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { VaaniOrb } from "@/components/call/vaani-orb";
-import { Home, Users, BookOpen, Settings } from "lucide-react";
+import {
+  Home,
+  Users,
+  BookHeart,
+  Settings,
+  PhoneCall,
+  Search,
+  LogOut,
+  Plus,
+} from "lucide-react";
+import { Logo } from "@/components/ui/logo";
+import { Button } from "@/components/ui/button";
+import { AvatarOrb } from "@/components/ui/avatar-orb";
+import { GuestBanner } from "@/components/app/guest-banner";
+import { CommandPalette } from "@/components/app/command-palette";
+import { PersonDialog, type PersonRecord } from "@/components/app/person-dialog";
+import { createClient } from "@/lib/supabase/client";
+
+const NAV_ITEMS = [
+  { label: "Home", href: "/home", icon: Home },
+  { label: "People", href: "/people", icon: Users },
+  { label: "Memory", href: "/memory", icon: BookHeart },
+  { label: "Settings", href: "/settings", icon: Settings },
+];
 
 export default function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+  const router = useRouter();
+
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [addPersonOpen, setAddPersonOpen] = useState(false);
+  const [isGuest, setIsGuest] = useState(false);
+  const [displayName, setDisplayName] = useState("there");
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const supabase = createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (user) {
+          setIsGuest(!!user.is_anonymous);
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("display_name, is_guest")
+            .eq("id", user.id)
+            .single();
+
+          if (profile) {
+            setIsGuest(!!profile.is_guest);
+            if (profile.display_name) setDisplayName(profile.display_name);
+          } else {
+            const metaName =
+              user.user_metadata?.display_name ||
+              user.user_metadata?.full_name ||
+              user.email?.split("@")[0];
+            if (metaName) setDisplayName(metaName);
+          }
+        }
+      } catch {
+        // fallback
+      }
+    };
+
+    fetchUser();
+  }, []);
+
+  const handleSignOut = async () => {
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch {
+      // ignore
+    }
+    router.push("/login");
+  };
+
+  const handlePersonAdded = (person: PersonRecord) => {
+    // If on people page or home page, refresh
+    router.refresh();
+  };
+
   return (
     <div className="min-h-screen bg-cream text-ink flex flex-col md:flex-row selection:bg-terracotta-subtle selection:text-ink">
-      {/* Sidebar for Desktop */}
-      <aside className="hidden md:flex w-64 border-r border-cream-200 bg-cream-50/70 backdrop-blur-xl p-6 flex-col justify-between shrink-0">
-        <div className="space-y-8">
-          {/* Sidebar Logo Slot with shared layoutId */}
-          <Link href="/home" className="flex items-center gap-3 focus:outline-none">
-            <motion.div
-              layoutId="vaani-orb"
-              className="relative size-10 shrink-0 flex items-center justify-center"
-              transition={{ type: "spring", stiffness: 120, damping: 20 }}
-            >
-              <VaaniOrb state="idle" className="!size-10" />
-            </motion.div>
-            <span className="font-display text-2xl font-medium text-ink tracking-tight">
-              Vaani
-            </span>
-          </Link>
+      {/* 1. SIDEBAR: 72px on tablet (md), 256px on desktop (lg), hidden on mobile */}
+      <aside className="hidden md:flex md:w-[72px] lg:w-64 border-r border-cream-200 bg-cream-50/80 backdrop-blur-xl flex-col justify-between shrink-0 sticky top-0 h-screen z-30 transition-all duration-200 ease-calm">
+        <div className="flex flex-col h-full justify-between p-3 lg:p-5">
+          <div className="space-y-6">
+            {/* Logo Slot */}
+            <div className="h-12 flex items-center justify-center lg:justify-start px-1">
+              <Link href="/home" className="flex items-center gap-3 focus:outline-none">
+                {/* On desktop show full wordmark logo; on tablet show mark */}
+                <div className="hidden lg:block">
+                  <Logo variant="dark" size="sm" />
+                </div>
+                <div className="lg:hidden">
+                  <Logo variant="dark" size="sm" markOnly />
+                </div>
+              </Link>
+            </div>
 
-          {/* App Navigation Links */}
-          <nav className="space-y-1.5 text-small font-medium text-ink-soft">
-            <Link
-              href="/home"
-              className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-cream-100 text-ink font-semibold"
+            {/* Navigation links */}
+            <nav className="space-y-1.5 font-medium text-small">
+              {NAV_ITEMS.map((item) => {
+                const isActive =
+                  pathname === item.href ||
+                  (item.href !== "/home" && pathname.startsWith(item.href));
+                const Icon = item.icon;
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    title={item.label}
+                    className={`flex items-center justify-center lg:justify-start gap-3 px-3 py-2.5 rounded-2xl transition duration-150 ${
+                      isActive
+                        ? "bg-cream-100 text-ink font-semibold shadow-xs"
+                        : "text-ink-soft hover:bg-cream-100/60 hover:text-ink"
+                    }`}
+                  >
+                    <Icon
+                      className={`size-5 shrink-0 ${
+                        isActive ? "text-terracotta" : "text-ink-soft"
+                      }`}
+                    />
+                    <span className="hidden lg:inline-block">{item.label}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+
+          {/* User profile & sign out at bottom of sidebar */}
+          <div className="pt-4 border-t border-cream-200/80 space-y-3">
+            <div className="flex items-center justify-center lg:justify-start gap-3 px-2 py-1.5 rounded-xl">
+              <AvatarOrb name={displayName} tint="#F2A65A" size="sm" />
+              <div className="hidden lg:block min-w-0 flex-1">
+                <div className="text-small font-medium text-ink truncate">
+                  {displayName}
+                </div>
+                <div className="text-xs text-ink-faint truncate">
+                  {isGuest ? "Guest account" : "Signed in"}
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={handleSignOut}
+              title="Sign out"
+              className="w-full flex items-center justify-center lg:justify-start gap-3 px-3 py-2 rounded-xl text-small text-ink-soft hover:text-rust hover:bg-cream-100/60 transition-colors duration-150"
             >
-              <Home className="size-4 text-terracotta" />
-              <span>Home</span>
-            </Link>
-            <div className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-ink-faint cursor-not-allowed select-none">
-              <Users className="size-4" />
-              <span>People</span>
-            </div>
-            <div className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-ink-faint cursor-not-allowed select-none">
-              <BookOpen className="size-4" />
-              <span>Memory</span>
-            </div>
-            <div className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-ink-faint cursor-not-allowed select-none">
-              <Settings className="size-4" />
-              <span>Settings</span>
-            </div>
-          </nav>
+              <LogOut className="size-4 shrink-0" />
+              <span className="hidden lg:inline-block">Sign out</span>
+            </button>
+          </div>
         </div>
       </aside>
 
-      {/* Main Content Area */}
+      {/* 2. MAIN APP CONTENT AREA */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Mobile Header with Sidebar Logo Slot destination */}
-        <header className="md:hidden h-16 border-b border-cream-200 bg-cream-50/80 backdrop-blur-xl px-5 flex items-center justify-between">
-          <Link href="/home" className="flex items-center gap-2.5">
-            <div className="relative size-8 shrink-0 flex items-center justify-center">
-              <VaaniOrb state="idle" className="!size-8" />
+        {/* Sticky Glass Top Bar */}
+        <header className="sticky top-0 z-20 h-16 border-b border-cream-200/70 bg-cream-50/80 backdrop-blur-xl px-4 md:px-8 flex items-center justify-between gap-3">
+          {/* Left: Logo on mobile, Search bar button on tablet/desktop */}
+          <div className="flex items-center gap-3">
+            <div className="md:hidden">
+              <Logo variant="dark" size="sm" href="/home" />
             </div>
-            <span className="font-display text-xl font-medium text-ink">Vaani</span>
-          </Link>
+
+            {/* ⌘K Trigger Button */}
+            <button
+              type="button"
+              onClick={() => setCommandPaletteOpen(true)}
+              className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-cream-100/80 hover:bg-cream-100 border border-cream-200/60 text-small text-ink-soft transition duration-150 focus:outline-none focus:ring-2 focus:ring-terracotta/30"
+            >
+              <Search className="size-4 text-ink-faint" />
+              <span className="hidden sm:inline">Search people, actions…</span>
+              <span className="sm:hidden">Search</span>
+              <kbd className="hidden md:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[11px] font-mono bg-cream-50 text-ink-faint rounded border border-cream-200">
+                ⌘K
+              </kbd>
+            </button>
+          </div>
+
+          {/* Right: "New call" Primary Button */}
+          <div className="flex items-center gap-2.5">
+            <Link href="/calls/new">
+              <Button
+                variant="primary"
+                size="sm"
+                className="gap-2 shadow-xs"
+              >
+                <Plus className="size-4" />
+                <span className="hidden sm:inline">New call</span>
+                <span className="sm:hidden">Call</span>
+              </Button>
+            </Link>
+          </div>
         </header>
 
-        <main className="flex-1 p-5 md:p-8 max-w-content w-full mx-auto">
+        {/* Guest Banner if guest */}
+        <div className="px-4 md:px-8 pt-4">
+          <GuestBanner isGuest={isGuest} />
+        </div>
+
+        {/* Child Page Content */}
+        <main className="flex-1 px-4 md:px-8 py-6 pb-28 md:pb-12 max-w-content w-full mx-auto">
           {children}
         </main>
       </div>
+
+      {/* 3. MOBILE BOTTOM TAB BAR (fixed at bottom on mobile, hidden on md+) */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 h-16 border-t border-cream-200/80 bg-cream-50/90 backdrop-blur-xl flex items-center justify-around px-2 pb-safe">
+        {NAV_ITEMS.map((item) => {
+          const isActive =
+            pathname === item.href ||
+            (item.href !== "/home" && pathname.startsWith(item.href));
+          const Icon = item.icon;
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex flex-col items-center justify-center gap-1 py-1 px-3 rounded-xl transition duration-150 ${
+                isActive ? "text-terracotta font-semibold" : "text-ink-soft hover:text-ink"
+              }`}
+            >
+              <Icon className="size-5" />
+              <span className="text-[11px]">{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* Global ⌘K Command Palette Modal */}
+      <CommandPalette
+        open={commandPaletteOpen}
+        onOpenChange={setCommandPaletteOpen}
+        onAddPersonClick={() => {
+          setCommandPaletteOpen(false);
+          setAddPersonOpen(true);
+        }}
+      />
+
+      {/* Global Add Person Dialog */}
+      <PersonDialog
+        open={addPersonOpen}
+        onOpenChange={setAddPersonOpen}
+        onSuccess={handlePersonAdded}
+      />
     </div>
   );
 }
