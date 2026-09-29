@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
       const res = await fetch(`${callServerUrl}/calls/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ callId, force }),
+        body: JSON.stringify({ callId, force: force ?? true }),
         signal: controller.signal,
       });
 
@@ -30,9 +30,13 @@ export async function POST(req: NextRequest) {
       if (res.ok) {
         const data = await res.json();
         return NextResponse.json({ success: true, data });
+      } else {
+        const errData = await res.json().catch(() => null);
+        console.warn("[/api/calls/start] Call server returned non-200:", errData);
       }
-    } catch {
-      // Call server not running or unreachable, fallback to browser simulation
+    } catch (fetchErr: unknown) {
+      console.warn("[/api/calls/start] Could not reach call server:", fetchErr);
+      // Fallback to browser simulation
     }
 
     return NextResponse.json({

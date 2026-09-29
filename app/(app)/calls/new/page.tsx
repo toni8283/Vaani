@@ -351,14 +351,17 @@ function CreateCallWizardContent() {
 
       // If status is connecting (Right now), navigate to live call screen
       if (status === "connecting") {
-        // Asynchronously notify call-server if running
-        fetch("/api/calls/start", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ callId: callRow.id }),
-        }).catch(() => {});
+        try {
+          await fetch("/api/calls/start", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ callId: callRow.id, force: true }),
+          });
+        } catch (fetchErr) {
+          console.warn("Could not reach call server:", fetchErr);
+        }
 
-        router.push(`/calls/${callRow.id}/live${isDemo ? "?demo=true" : ""}`);
+        router.push(`/calls/${callRow.id}/live`);
       } else {
         router.push(`/calls/${callRow.id}`);
       }

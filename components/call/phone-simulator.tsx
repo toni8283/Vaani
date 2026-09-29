@@ -96,7 +96,17 @@ export function PhoneSimulator({
   const [enteredDigits, setEnteredDigits] = useState("");
   const [currentTimeStr, setCurrentTimeStr] = useState("9:41");
 
+  const [hasAnswered, setHasAnswered] = useState(false);
   const stopRingtoneRef = useRef<(() => void) | null>(null);
+
+  // Sync / reset answered state
+  useEffect(() => {
+    if (status === "live") {
+      setHasAnswered(true);
+    } else if (status === "completed" || status === "failed" || !isOpen) {
+      setHasAnswered(false);
+    }
+  }, [status, isOpen]);
 
   // Time in status bar
   useEffect(() => {
@@ -113,7 +123,7 @@ export function PhoneSimulator({
 
   // Ringtone handling when ringing
   useEffect(() => {
-    if (isOpen && status === "ringing") {
+    if (isOpen && status === "ringing" && !hasAnswered) {
       stopRingtoneRef.current = playRingtone();
     } else {
       if (stopRingtoneRef.current) {
@@ -128,20 +138,21 @@ export function PhoneSimulator({
         stopRingtoneRef.current = null;
       }
     };
-  }, [isOpen, status]);
+  }, [isOpen, status, hasAnswered]);
 
   // Voice speech synthesis when a new turn occurs and voiceSpeechEnabled is true
   useEffect(() => {
-    if (status === "live" && voiceSpeechEnabled && currentTurn?.text) {
+    if ((status === "live" || hasAnswered) && voiceSpeechEnabled && currentTurn?.text) {
       if (currentTurn.speaker === "vaani" || currentTurn.speaker === "person") {
         speakSpeech(currentTurn.text);
       }
-    } else if (status !== "live") {
+    } else if (status !== "live" && !hasAnswered) {
       stopSpeech();
     }
-  }, [currentTurn, status, voiceSpeechEnabled]);
+  }, [currentTurn, status, hasAnswered, voiceSpeechEnabled]);
 
   const handleAccept = () => {
+    setHasAnswered(true);
     if (stopRingtoneRef.current) {
       stopRingtoneRef.current();
       stopRingtoneRef.current = null;
@@ -157,7 +168,19 @@ export function PhoneSimulator({
     }
     playHangupSound();
     stopSpeech();
+    setHasAnswered(false);
     onEndCall?.();
+    onClose();
+  };
+
+  const handleHangup = () => {
+    playHangupSound();
+    stopSpeech();
+    setHasAnswered(false);
+    onEndCall?.();
+    setTimeout(() => {
+      onClose();
+    }, 600);
   };
 
   const handleKeyPress = (num: string) => {
@@ -173,51 +196,45 @@ export function PhoneSimulator({
     return `${mins}:${secs}`;
   };
 
-  const isCallActive = status === "live";
-  const isIncoming = status === "ringing" || status === "connecting";
+  const isCallActive = status === "live" || hasAnswered;
+  const isIncoming = (status === "ringing" || status === "connecting") && !hasAnswered;
   const isEnded = status === "ending" || status === "completed";
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 md:p-6 bg-ink/50 backdrop-blur-md transition-all">
+    <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 pointer-events-auto flex flex-col items-end">
       {/* Container with pop-in animation */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.92, y: 24 }}
+        initial={{ opacity: 0, scale: 0.88, y: 30 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.92, y: 24 }}
-        transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-        className="relative flex flex-col items-center"
+        exit={{ opacity: 0, scale: 0.88, y: 30 }}
+        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+        className="relative flex flex-col items-end origin-bottom-right"
       >
-        {/* Floating Top Controls (Close Simulator, Audio speech badge) */}
-        <div className="absolute -top-12 inset-x-0 flex items-center justify-between px-2 text-white/90">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold tracking-wide uppercase px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white flex items-center gap-1.5 shadow-sm">
-              <Sparkles className="size-3 text-warm-amber" />
-              Browser Phone Companion
-            </span>
+        {/* Floating Top Controls (Close Simulator, Companion badge) */}
+        <div className="w-full flex items-center justify-between pb-2 px-1">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cream-50/95 dark:bg-ink-raised/95 border border-ink/10 dark:border-cream/10 shadow-md backdrop-blur-md text-[11px] font-semibold text-ink dark:text-cream">
+            <Sparkles className="size-3 text-warm-amber" />
+            <span>Companion Phone</span>
           </div>
 
           <button
             onClick={onClose}
-            title="Minimize phone"
-            className="p-1.5 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 text-white transition-colors"
+            title="Minimize phone companion"
+            className="p-1 rounded-full bg-cream-50/95 dark:bg-ink-raised/95 hover:bg-cream-100 dark:hover:bg-ink-hover border border-ink/10 dark:border-cream/10 shadow-md text-ink-muted hover:text-ink dark:hover:text-cream transition-colors cursor-pointer"
           >
-            <X className="size-4" />
+            <X className="size-3.5" />
           </button>
         </div>
 
         {/* 
           ROSE-GOLD & WHITE IPHONE HARDWARE CHASSIS 
-          Dimensions: 300px x 620px
+          Dimensions: 285px x 560px
           Chamfered metallic rim, ceramic faceplate, Home button
         */}
         <div
-          className="relative w-[306px] sm:w-[320px] h-[610px] sm:h-[630px] rounded-[52px] p-[10px] bg-gradient-to-b from-[#F7D8D0] via-[#E8B4A8] to-[#D5988C] shadow-[0_25px_65px_-12px_rgba(90,45,20,0.5),0_0_0_1px_rgba(255,255,255,0.6)_inset]"
-          style={{
-            boxShadow:
-              "0 25px 65px -12px rgba(43, 33, 28, 0.55), 0 0 0 2px rgba(255,255,255,0.7) inset, 0 1px 3px rgba(0,0,0,0.2)",
-          }}
+          className="relative w-[285px] sm:w-[305px] h-[550px] sm:h-[580px] rounded-[48px] p-[8px] bg-gradient-to-b from-[#F7D8D0] via-[#E8B4A8] to-[#D5988C] shadow-[0_20px_50px_-10px_rgba(43,33,28,0.45),0_0_0_2px_rgba(255,255,255,0.7)_inset]"
         >
           {/* Subtle volume buttons on left edge */}
           <div className="absolute -left-[3px] top-[108px] w-[3px] h-[26px] bg-[#D5988C] rounded-l-sm" />
@@ -227,21 +244,21 @@ export function PhoneSimulator({
           <div className="absolute -right-[3px] top-[128px] w-[3px] h-[44px] bg-[#D5988C] rounded-r-sm" />
 
           {/* White Ceramic Front Faceplate */}
-          <div className="relative w-full h-full rounded-[44px] bg-[#FAF8F5] flex flex-col items-center justify-between p-3.5 shadow-inner">
+          <div className="relative w-full h-full rounded-[40px] bg-[#FAF8F5] flex flex-col items-center justify-between p-2.5 shadow-inner">
             {/* Top Bezel: FaceTime Camera, Speaker Grill, Ambient Sensor */}
-            <div className="w-full flex items-center justify-center pt-2 pb-1 relative">
+            <div className="w-full flex items-center justify-center pt-1.5 pb-1 relative">
               {/* Sensor */}
-              <div className="absolute left-[88px] size-2 rounded-full bg-[#1A1412]/30" />
+              <div className="absolute left-[78px] size-1.5 rounded-full bg-[#1A1412]/30" />
               {/* Camera */}
-              <div className="size-3 rounded-full bg-[#201815] border border-white/60 shadow-inner flex items-center justify-center">
+              <div className="size-2.5 rounded-full bg-[#201815] border border-white/60 shadow-inner flex items-center justify-center">
                 <div className="size-1 rounded-full bg-[#415C76]/70" />
               </div>
               {/* Speaker Grill */}
-              <div className="ml-3 w-12 h-1 rounded-full bg-[#4A3D36]/40 border border-white/50" />
+              <div className="ml-2.5 w-10 h-1 rounded-full bg-[#4A3D36]/40 border border-white/50" />
             </div>
 
             {/* SCREEN DISPLAY AREA */}
-            <div className="relative w-full flex-1 rounded-[28px] overflow-hidden bg-gradient-to-b from-[#1C1614] via-[#2A1F1B] to-[#171210] text-white flex flex-col justify-between p-4 shadow-inner border border-black/20 select-none">
+            <div className="relative w-full flex-1 rounded-[22px] overflow-hidden bg-gradient-to-b from-[#1C1614] via-[#2A1F1B] to-[#171210] text-white flex flex-col justify-between p-3.5 shadow-inner border border-black/20 select-none">
               {/* iOS Status Bar */}
               <div className="flex items-center justify-between text-[11px] font-semibold text-white/80 px-2 pt-0.5 shrink-0">
                 <span>{currentTimeStr}</span>
@@ -536,10 +553,10 @@ export function PhoneSimulator({
                   {/* End Call Button */}
                   <div className="pt-2 pb-1 flex justify-center">
                     <button
-                      onClick={handleDecline}
-                      className="size-14 rounded-full bg-rust hover:bg-rust/90 flex items-center justify-center text-white shadow-lg shadow-rust/50 active:scale-95 transition-transform"
+                      onClick={handleHangup}
+                      className="size-12 rounded-full bg-rust hover:bg-rust/90 flex items-center justify-center text-white shadow-lg shadow-rust/50 active:scale-95 transition-transform cursor-pointer"
                     >
-                      <PhoneOff className="size-6" />
+                      <PhoneOff className="size-5" />
                     </button>
                   </div>
                 </div>
@@ -547,19 +564,19 @@ export function PhoneSimulator({
 
               {/* SCREEN CONTENT: CALL ENDED / COMPLETED */}
               {isEnded && (
-                <div className="flex-1 flex flex-col items-center justify-center text-center space-y-3 py-12">
-                  <div className="size-16 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-sage">
-                    <PhoneOff className="size-8" />
+                <div className="flex-1 flex flex-col items-center justify-center text-center space-y-3 py-10">
+                  <div className="size-14 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-sage">
+                    <PhoneOff className="size-7" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-medium text-white">
+                    <h3 className="text-base font-medium text-white">
                       Call Completed
                     </h3>
-                    <p className="text-xs text-white/70 font-mono mt-1">
+                    <p className="text-xs text-white/70 font-mono mt-0.5">
                       Duration: {formatTimer(durationSeconds)}
                     </p>
                   </div>
-                  <p className="text-xs text-amber-soft max-w-[200px] leading-relaxed">
+                  <p className="text-[11px] text-amber-soft max-w-[190px] leading-relaxed">
                     Preparing conversation summary and memory notes…
                   </p>
                 </div>
@@ -567,13 +584,13 @@ export function PhoneSimulator({
             </div>
 
             {/* Bottom Bezel: Classic Circular TouchID / Home Button */}
-            <div className="w-full flex items-center justify-center pt-2 pb-0.5">
+            <div className="w-full flex items-center justify-center pt-1.5 pb-0.5">
               <button
                 onClick={onClose}
                 title="Home button (Minimize)"
-                className="size-11 rounded-full bg-gradient-to-b from-[#F5F2EB] to-[#ECE7DD] border-2 border-[#E8B4A8] shadow-inner active:scale-95 transition-transform flex items-center justify-center"
+                className="size-10 rounded-full bg-gradient-to-b from-[#F5F2EB] to-[#ECE7DD] border-2 border-[#E8B4A8] shadow-inner active:scale-95 transition-transform flex items-center justify-center cursor-pointer"
               >
-                <div className="size-4 rounded-md border border-[#E8B4A8]/40" />
+                <div className="size-3.5 rounded-md border border-[#E8B4A8]/40" />
               </button>
             </div>
           </div>

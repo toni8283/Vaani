@@ -138,7 +138,7 @@ function LiveCallContent() {
   } = useCallStream({
     callId,
     initialCall: callData,
-    forceDemo: isDemoQuery || callData?.is_demo,
+    forceDemo: Boolean(isDemoQuery && !callData?.twilio_call_sid),
   });
 
   restartDemoRef.current = restartDemo;
@@ -721,6 +721,23 @@ function LiveCallContent() {
         onEndCall={endCall}
         notes={callData?.notes}
       />
+
+      {/* Floating button to restore companion phone when closed */}
+      <AnimatePresence>
+        {!phoneOpen && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.9, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 12 }}
+            onClick={() => setPhoneOpen(true)}
+            title="Open Phone Simulator"
+            className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full bg-ink text-cream shadow-xl border border-cream/20 hover:bg-ink/90 active:scale-95 transition-all text-xs font-medium cursor-pointer"
+          >
+            <Smartphone className="size-4 text-warm-amber" />
+            <span>Interactive Phone</span>
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
