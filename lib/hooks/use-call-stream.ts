@@ -211,9 +211,11 @@ export function useCallStream({
 
           if (currentCall.status === "failed") {
             setErrorMessage(
-              "Twilio call didn't go through (requires verified caller ID on trial). You can experience the full call right now in the Browser Phone Simulator!"
+              "Twilio Trial Notice: Trial accounts can only ring verified phone numbers. Interactive Browser Voice Mode is active below — click Accept to talk to Vaani with your microphone!"
             );
             setPhoneOpen(true);
+            startDemoSimulationRef.current();
+            return;
           }
 
           // 1. Fetch existing call events
@@ -256,9 +258,10 @@ export function useCallStream({
 
                 if (updated.status === "failed") {
                   setErrorMessage(
-                    "Twilio call didn't go through (requires verified caller ID on trial). You can experience the full call right now in the Browser Phone Simulator!"
+                    "Twilio Trial Notice: Trial accounts can only ring verified phone numbers. Interactive Browser Voice Mode is active below — click Accept to talk to Vaani with your microphone!"
                   );
                   setPhoneOpen(true);
+                  startDemoSimulationRef.current();
                 }
               }
             )
@@ -366,6 +369,20 @@ export function useCallStream({
     }
   }, [callId]);
 
+  const appendUserTurn = useCallback((text: string) => {
+    if (!text.trim()) return;
+    const newTurn: TurnEvent = {
+      id: `user-speech-${Date.now()}`,
+      speaker: "person",
+      text: text.trim(),
+      at_ms: (durationSecondsRef.current || 1) * 1000,
+      kind: "turn",
+    };
+    setCurrentTurn(newTurn);
+    setTranscript((prev) => [...prev, newTurn]);
+    setActiveSpeaker("person");
+  }, []);
+
   return {
     callData,
     status,
@@ -384,6 +401,7 @@ export function useCallStream({
     errorMessage,
     answerCall,
     endCall,
+    appendUserTurn,
     restartDemo: startDemoSimulation,
   };
 }

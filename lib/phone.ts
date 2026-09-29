@@ -31,6 +31,20 @@ export function validatePhoneNumber(phone: string): {
     // parse failed
   }
 
+  const digitsOnly = formattedInput.replace(/\D/g, "");
+  if (formattedInput.startsWith("+91") && digitsOnly.length > 12) {
+    return {
+      isValid: false,
+      error: `Indian phone numbers have exactly 10 digits after +91 (e.g. +91 98765 43210). You entered ${digitsOnly.length - 2} digits.`,
+    };
+  }
+  if (formattedInput.startsWith("+91") && digitsOnly.length < 12) {
+    return {
+      isValid: false,
+      error: `Indian phone numbers have 10 digits after +91 (e.g. +91 98765 43210). You entered only ${Math.max(0, digitsOnly.length - 2)} digits.`,
+    };
+  }
+
   return {
     isValid: false,
     error: "That number doesn't look quite right. Try including the country code, like +91.",

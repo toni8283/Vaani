@@ -31,6 +31,9 @@ import {
   playHangupSound,
   speakSpeech,
   stopSpeech,
+  requestMicrophone,
+  startSpeechRecognition,
+  type MicrophoneSession,
 } from "@/lib/audio";
 import type { TurnEvent } from "@/lib/demo/simulator";
 
@@ -55,6 +58,7 @@ interface PhoneSimulatorProps {
   currentTurn?: TurnEvent | null;
   onAnswerCall?: () => void;
   onEndCall?: () => void;
+  onUserSpoken?: (text: string) => void;
   notes?: string | null;
 }
 
@@ -86,6 +90,7 @@ export function PhoneSimulator({
   currentTurn = null,
   onAnswerCall,
   onEndCall,
+  onUserSpoken,
   notes,
 }: PhoneSimulatorProps) {
   const [isMuted, setIsMuted] = useState(false);
@@ -97,7 +102,11 @@ export function PhoneSimulator({
   const [currentTimeStr, setCurrentTimeStr] = useState("9:41");
 
   const [hasAnswered, setHasAnswered] = useState(false);
+  const [micActive, setMicActive] = useState(false);
+  const [micLevel, setMicLevel] = useState(0);
   const stopRingtoneRef = useRef<(() => void) | null>(null);
+  const micSessionRef = useRef<MicrophoneSession | null>(null);
+  const stopSpeechRecRef = useRef<(() => void) | null>(null);
 
   // Sync / reset answered state
   useEffect(() => {
@@ -105,8 +114,33 @@ export function PhoneSimulator({
       setHasAnswered(true);
     } else if (status === "completed" || status === "failed" || !isOpen) {
       setHasAnswered(false);
+      if (micSessionRef.current) {
+        micSessionRef.current.stop();
+        micSessionRef.current = null;
+      }
+      if (stopSpeechRecRef.current) {
+        stopSpeechRecRef.current();
+        stopSpeechRecRef.current = null;
+      }
+      setMicActive(false);
+      setMicLevel(0);
     }
   }, [status, isOpen]);
+
+  // Clean up mic and speech recognition on unmount
+  useEffect(() => {
+    return () => {
+      if (micSessionRef.current) {
+        micSessionRef.current.stop();
+        micSessionRef.current = null;
+      }
+      if (stopSpeechRecRef.current) {
+        stopSpeechRecRef.current();
+        stopSpeechRecRef.current = null;
+      }
+      stopSpeech();
+    };
+  }, []);
 
   // Time in status bar
   useEffect(() => {
@@ -140,10 +174,10 @@ export function PhoneSimulator({
     };
   }, [isOpen, status, hasAnswered]);
 
-  // Voice speech synthesis when a new turn occurs and voiceSpeechEnabled is true
+  // Voice speech synthesis when Vaani speaks
   useEffect(() => {
     if ((status === "live" || hasAnswered) && voiceSpeechEnabled && currentTurn?.text) {
-      if (currentTurn.speaker === "vaani" || currentTurn.speaker === "person") {
+      if (currentTurn.speaker === "vaani") {
         speakSpeech(currentTurn.text);
       }
     } else if (status !== "live" && !hasAnswered) {
@@ -151,7 +185,7 @@ export function PhoneSimulator({
     }
   }, [currentTurn, status, hasAnswered, voiceSpeechEnabled]);
 
-  const handleAccept = () => {
+  const handleAccept = async () => {
     setHasAnswered(true);
     if (stopRingtoneRef.current) {
       stopRingtoneRef.current();
@@ -159,6 +193,31 @@ export function PhoneSimulator({
     }
     playPickupSound();
     onAnswerCall?.();
+
+    // 1. Request microphone permission for real two-way interaction
+    try {
+      const session = await requestMicrophone((lvl) => {
+        if (!isMuted) setMicLevel(lvl);
+      });
+      if (session) {
+        micSessionRef.current = session;
+        setMicActive(true);
+      }
+    } catch (err) {
+      console.warn("Could not start microphone session:", err);
+    }
+
+    // 2. Start browser speech recognition
+    try {
+      const stopRec = startSpeechRecognition((spokenText) => {
+        onUserSpoken?.(spokenText);
+      });
+      if (stopRec) {
+        stopSpeechRecRef.current = stopRec;
+      }
+    } catch (err) {
+      console.warn("Could not start speech recognition:", err);
+    }
   };
 
   const handleDecline = () => {
@@ -168,6 +227,16 @@ export function PhoneSimulator({
     }
     playHangupSound();
     stopSpeech();
+    if (micSessionRef.current) {
+      micSessionRef.current.stop();
+      micSessionRef.current = null;
+    }
+    if (stopSpeechRecRef.current) {
+      stopSpeechRecRef.current();
+      stopSpeechRecRef.current = null;
+    }
+    setMicActive(false);
+    setMicLevel(0);
     setHasAnswered(false);
     onEndCall?.();
     onClose();
@@ -176,11 +245,28 @@ export function PhoneSimulator({
   const handleHangup = () => {
     playHangupSound();
     stopSpeech();
+    if (micSessionRef.current) {
+      micSessionRef.current.stop();
+      micSessionRef.current = null;
+    }
+    if (stopSpeechRecRef.current) {
+      stopSpeechRecRef.current();
+      stopSpeechRecRef.current = null;
+    }
+    setMicActive(false);
+    setMicLevel(0);
     setHasAnswered(false);
     onEndCall?.();
     setTimeout(() => {
       onClose();
     }, 600);
+  };
+
+  const toggleMute = () => {
+    const nextMuted = !isMuted;
+    setIsMuted(nextMuted);
+    micSessionRef.current?.setMuted(nextMuted);
+    if (nextMuted) setMicLevel(0);
   };
 
   const handleKeyPress = (num: string) => {
@@ -199,6 +285,7 @@ export function PhoneSimulator({
   const isCallActive = status === "live" || hasAnswered;
   const isIncoming = (status === "ringing" || status === "connecting") && !hasAnswered;
   const isEnded = status === "ending" || status === "completed";
+  const effectiveLevel = Math.max(level, micLevel);
 
   if (!isOpen) return null;
 
@@ -362,6 +449,19 @@ export function PhoneSimulator({
                         &quot;{currentTurn.text}&quot;
                       </p>
                     )}
+                    <div className="flex items-center justify-center pt-1">
+                      {micActive ? (
+                        <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-[10px] text-emerald-300 font-medium">
+                          <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          <span>{isMuted ? "Mic Muted" : "🎤 Mic Live — Speak to Vaani"}</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/10 text-[10px] text-white/70">
+                          <Sparkles className="size-3 text-warm-amber" />
+                          <span>AI Voice Live</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Center: Live Waveform Orb or Keypad */}
@@ -419,15 +519,15 @@ export function PhoneSimulator({
                       <div className="relative flex items-center justify-center py-4">
                         <motion.div
                           animate={{
-                            scale: 1 + level * 0.25,
-                            opacity: 0.8 + level * 0.2,
+                            scale: 1 + effectiveLevel * 0.35,
+                            opacity: 0.8 + effectiveLevel * 0.2,
                           }}
                           transition={{ duration: 0.1 }}
                           className="relative flex items-center justify-center"
                         >
                           <span
                             className="absolute -inset-4 rounded-full bg-amber-glow/30 blur-xl pointer-events-none"
-                            style={{ opacity: 0.4 + level * 0.6 }}
+                            style={{ opacity: 0.4 + effectiveLevel * 0.6 }}
                           />
                           <AvatarOrb
                             name={callerNickname || callerName}
@@ -445,7 +545,7 @@ export function PhoneSimulator({
                     {/* 1. Mute */}
                     <div className="flex flex-col items-center gap-1">
                       <button
-                        onClick={() => setIsMuted(!isMuted)}
+                        onClick={toggleMute}
                         className={`size-11 rounded-full flex items-center justify-center transition-colors ${
                           isMuted
                             ? "bg-white text-ink"

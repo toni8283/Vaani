@@ -134,6 +134,7 @@ function LiveCallContent() {
     errorMessage,
     answerCall,
     endCall,
+    appendUserTurn,
     restartDemo,
   } = useCallStream({
     callId,
@@ -719,6 +720,7 @@ function LiveCallContent() {
         currentTurn={currentTurn}
         onAnswerCall={answerCall}
         onEndCall={endCall}
+        onUserSpoken={appendUserTurn}
         notes={callData?.notes}
       />
 

@@ -283,6 +283,13 @@ function CreateCallWizardContent() {
 
         if (existingPerson) {
           targetPersonId = existingPerson.id;
+          await supabase
+            .from("people")
+            .update({
+              consent_confirmed: true,
+              phone_e164: phoneCheck.e164,
+            })
+            .eq("id", existingPerson.id);
         } else {
           // Insert new person
           const { data: newPerson, error: personErr } = await supabase
@@ -568,8 +575,11 @@ function CreateCallWizardContent() {
                     disabled={isChoosingExisting}
                     required
                   />
-                  <p className="text-small text-ink-faint">
-                    Include the country code, like +91.
+                  <p className="text-xs text-ink-muted">
+                    Include the country code, like +91 followed by 10 digits (e.g. +91 98765 43210).
+                  </p>
+                  <p className="text-[11px] text-warm-amber dark:text-amber-soft bg-warm-amber/10 dark:bg-amber-soft/10 p-2 rounded-xl mt-1">
+                    📞 <strong>Twilio Trial:</strong> Real telephony only rings verified numbers in Twilio Console. For any other number, Vaani connects directly with interactive voice and live microphone in your browser!
                   </p>
                 </div>
               </div>
