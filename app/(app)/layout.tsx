@@ -16,7 +16,6 @@ import {
   Plus,
   Sun,
   Moon,
-  Palette,
 } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { Button } from "@/components/ui/button";
@@ -41,11 +40,10 @@ export default function AppLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { theme, setTheme, resolvedTheme, accent, setAccent } = useTheme();
+  const { theme, setTheme, resolvedTheme } = useTheme();
 
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [addPersonOpen, setAddPersonOpen] = useState(false);
-  const [paletteOpen, setPaletteOpen] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
   const [displayName, setDisplayName] = useState("there");
 
@@ -101,7 +99,6 @@ export default function AppLayout({
 
   return (
     <div
-      data-accent={accent}
       className="min-h-screen bg-cream text-ink flex flex-col md:flex-row selection:bg-terracotta-subtle selection:text-ink"
     >
       {/* 1. SIDEBAR: 72px on tablet (md), 256px on desktop (lg), hidden on mobile */}
@@ -209,53 +206,8 @@ export default function AppLayout({
             </button>
           </div>
 
-          {/* Right: Accent Colors, Theme Toggle & "New call" Primary Button */}
+          {/* Right: Theme Toggle & "New call" Primary Button */}
           <div className="flex items-center gap-2">
-            {/* Quick Accent Color Switcher Popover */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setPaletteOpen(!paletteOpen)}
-                title="Choose dashboard accent color"
-                className="p-2 rounded-full border border-cream-200/80 bg-cream-100/60 hover:bg-cream-100 text-ink-soft hover:text-ink transition duration-150 focus:outline-none focus:ring-2 focus:ring-terracotta/30"
-                aria-label="Accent colors"
-              >
-                <Palette className="size-4 text-terracotta" />
-              </button>
-
-              {paletteOpen && (
-                <div className="absolute right-0 top-12 z-50 p-2.5 rounded-2xl bg-cream-50/95 dark:bg-[#231B17] border border-cream-200/80 dark:border-[#382C25] shadow-lg flex items-center gap-2.5 backdrop-blur-xl animate-in fade-in-0 zoom-in-95">
-                  {[
-                    { id: "amber" as const, color: "#C4622D", label: "Amber" },
-                    { id: "purple" as const, color: "#8E6BD9", label: "Purple" },
-                    { id: "pink" as const, color: "#E06D94", label: "Pink" },
-                    { id: "blue" as const, color: "#4B8FE2", label: "Blue" },
-                    { id: "white" as const, color: "#FAF5EE", label: "White" },
-                  ].map((opt) => (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => {
-                        setAccent(opt.id);
-                        setPaletteOpen(false);
-                      }}
-                      title={`${opt.label} accent`}
-                      className={`size-7 rounded-full border flex items-center justify-center transition-transform hover:scale-115 ${
-                        accent === opt.id
-                          ? "border-white ring-2 ring-terracotta scale-110 shadow-sm"
-                          : "border-black/25 dark:border-white/30"
-                      }`}
-                      style={{ backgroundColor: opt.color }}
-                    >
-                      {accent === opt.id && (
-                        <span className={`size-2 rounded-full ${opt.id === "white" ? "bg-ink" : "bg-white"} shadow-xs`} />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
             {/* Light / Dark Mode Toggle */}
             <button
               type="button"

@@ -128,123 +128,13 @@
   color: #8C7E74 !important;
 }
 
-/* ==========================================================================
-   Logo Dark Mode Guarantee (100% Pure White in Evening / Dark Mode)
-   ========================================================================== */
+/* Logo White in Dark Mode (100% Guaranteed) */
 .dark .vaani-logo-mark {
   filter: brightness(0) invert(1) !important;
 }
 
 .dark .vaani-logo-text {
   color: #FFFFFF !important;
-}
-
-/* ==========================================================================
-   Dynamic Accent Palettes
-   Each palette provides RGB channel triplets:
-   --accent-primary : Main button, badge, and active icon color
-   --accent-hover   : Hover state for primary buttons
-   --accent-subtle  : Light tinted background (cards, chips, active nav items)
-   --accent-deep    : Deep rich text or border color
-   --accent-glow    : Radiant orb/glow gradient start
-   --accent-soft    : Soft warm gradient stop
-   ========================================================================== */
-
-/* 1. Amber (Sunrise Terracotta) — Default Signature */
-:root,
-[data-accent="amber"],
-html[data-accent="amber"] {
-  --accent-primary: 196 98 45;    /* #C4622D */
-  --accent-hover: 173 82 36;      /* #AD5224 */
-  --accent-subtle: 246 227 214;   /* #F6E3D6 */
-  --accent-deep: 143 63 23;       /* #8F3F17 */
-  --accent-glow: 242 166 90;      /* #F2A65A */
-  --accent-soft: 251 217 168;     /* #FBD9A8 */
-}
-
-/* 2. Purple (Lavender Glow) */
-[data-accent="purple"],
-html[data-accent="purple"] {
-  --accent-primary: 142 107 217;  /* #8E6BD9 */
-  --accent-hover: 123 85 202;    /* #7B55CA */
-  --accent-subtle: 240 235 252;   /* #F0EBFC */
-  --accent-deep: 101 67 181;      /* #6543B5 */
-  --accent-glow: 191 166 245;     /* #BFA6F5 */
-  --accent-soft: 217 206 247;     /* #D9CEF7 */
-}
-
-/* 3. Pink (Blush Rose) */
-[data-accent="pink"],
-html[data-accent="pink"] {
-  --accent-primary: 224 109 148;  /* #E06D94 */
-  --accent-hover: 209 85 128;    /* #D15580 */
-  --accent-subtle: 253 232 239;   /* #FDE8EF */
-  --accent-deep: 179 61 102;      /* #B33D66 */
-  --accent-glow: 247 168 196;     /* #F7A8C4 */
-  --accent-soft: 250 212 226;     /* #FAD4E2 */
-}
-
-/* 4. Blue (Sky Mist) */
-[data-accent="blue"],
-html[data-accent="blue"] {
-  --accent-primary: 75 143 226;   /* #4B8FE2 */
-  --accent-hover: 53 120 206;     /* #3578CE */
-  --accent-subtle: 235 243 254;   /* #EBF3FE */
-  --accent-deep: 37 99 235;       /* #2563EB */
-  --accent-glow: 147 197 253;     /* #93C5FD */
-  --accent-soft: 191 219 254;     /* #BFDBFE */
-}
-
-/* 5. White (Pearl Cloud) */
-[data-accent="white"],
-html[data-accent="white"] {
-  --accent-primary: 43 33 28;     /* #2B211C (charcoal pearl in light) */
-  --accent-hover: 23 18 16;       /* #171210 */
-  --accent-subtle: 239 233 223;   /* #EFE9DF */
-  --accent-deep: 23 18 16;        /* #171210 */
-  --accent-glow: 220 211 199;     /* #DCD3C7 */
-  --accent-soft: 250 245 238;     /* #FAF5EE */
-}
-
-/* Dark Mode Overrides for Subtle Backgrounds and Pearl White */
-.dark[data-accent="amber"],
-.dark [data-accent="amber"] {
-  --accent-subtle: 61 36 24;      /* #3D2418 */
-  --accent-deep: 251 217 168;     /* #FBD9A8 */
-}
-
-.dark[data-accent="purple"],
-.dark [data-accent="purple"] {
-  --accent-subtle: 46 33 74;      /* #2E214A */
-  --accent-deep: 217 206 247;     /* #D9CEF7 */
-}
-
-.dark[data-accent="pink"],
-.dark [data-accent="pink"] {
-  --accent-subtle: 69 30 46;      /* #451E2E */
-  --accent-deep: 250 212 226;     /* #FAD4E2 */
-}
-
-.dark[data-accent="blue"],
-.dark [data-accent="blue"] {
-  --accent-subtle: 26 43 71;      /* #1A2B47 */
-  --accent-deep: 191 219 254;     /* #BFDBFE */
-}
-
-.dark[data-accent="white"],
-.dark [data-accent="white"] {
-  --accent-primary: 250 245 238;  /* #FAF5EE (crisp pearl in dark) */
-  --accent-hover: 255 255 255;    /* #FFFFFF */
-  --accent-subtle: 45 35 30;      /* #2D231E */
-  --accent-deep: 255 255 255;     /* #FFFFFF */
-  --accent-glow: 255 255 255;
-  --accent-soft: 250 245 238;
-}
-
-/* Ensure button text is high contrast dark for pearl white in dark mode */
-.dark[data-accent="white"] .bg-terracotta,
-.dark [data-accent="white"] .bg-terracotta {
-  color: #171210 !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

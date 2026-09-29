@@ -33,13 +33,8 @@ const themeScript = `
       var isDashboard = p !== '/' && !p.startsWith('/login') && !p.startsWith('/signup') && !p.startsWith('/auth');
       var t = localStorage.getItem('vaani-theme') || 'system';
       var d = isDashboard && (t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches));
-      if (d) {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
-      var a = localStorage.getItem('vaani-accent') || 'amber';
-      document.documentElement.setAttribute('data-accent', isDashboard ? a : 'amber');
+      if (d) document.documentElement.classList.add('dark');
+      else document.documentElement.classList.remove('dark');
     } catch (e) {}
   })();
 `;

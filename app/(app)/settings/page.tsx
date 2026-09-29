@@ -27,7 +27,7 @@ import { useTheme } from "@/components/theme-provider";
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { theme, setTheme, accent, setAccent } = useTheme();
+  const { theme, setTheme } = useTheme();
 
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
@@ -120,110 +120,7 @@ export default function SettingsPage() {
       )}
 
       <form onSubmit={handleSaveProfile} className="space-y-6">
-        {/* 1. Appearance & Colors */}
-        <Card className="rounded-[28px] bg-cream-50 border-cream-200/90 shadow-sm p-6 md:p-8 space-y-6">
-          <div className="flex items-center gap-3 pb-2 border-b border-cream-200/80">
-            <Palette className="size-5 text-terracotta" />
-            <div>
-              <h2 className="font-display text-h4 text-ink font-medium">
-                Appearance & Colors
-              </h2>
-              <p className="text-small text-ink-soft">
-                Choose a cozy theme and your favorite accent color for your dashboard.
-              </p>
-            </div>
-          </div>
-
-          {/* Theme selector */}
-          <div className="space-y-3">
-            <label className="text-small font-medium text-ink">
-              Theme Mode
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {[
-                { id: "light" as const, label: "Warm Light", desc: "Cozy cream canvas", icon: Sun },
-                { id: "dark" as const, label: "Evening Dark", desc: "Warm cocoa night", icon: Moon },
-                { id: "system" as const, label: "System Sync", desc: "Follows your device", icon: Laptop },
-              ].map((opt) => {
-                const Icon = opt.icon;
-                const isSelected = theme === opt.id;
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => setTheme(opt.id)}
-                    className={`flex items-center gap-3.5 p-3.5 rounded-2xl border text-left transition duration-150 ${
-                      isSelected
-                        ? "bg-terracotta/10 border-terracotta ring-2 ring-terracotta/30 text-ink font-medium"
-                        : "bg-cream-100/60 border-cream-200 hover:bg-cream-100 text-ink-soft hover:text-ink"
-                    }`}
-                  >
-                    <div className={`p-2.5 rounded-xl transition-colors ${
-                      isSelected ? "bg-terracotta text-cream-50 shadow-xs" : "bg-cream-200/70 text-ink-soft"
-                    }`}>
-                      <Icon className="size-4" />
-                    </div>
-                    <div>
-                      <div className="text-small font-semibold text-ink">{opt.label}</div>
-                      <div className="text-xs text-ink-faint">{opt.desc}</div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Accent Color selector */}
-          <div className="space-y-3 pt-2 border-t border-cream-200/60">
-            <div className="flex items-center justify-between">
-              <label className="text-small font-medium text-ink">
-                Accent Color
-              </label>
-              <span className="text-xs text-ink-faint">
-                Changes primary buttons, active tabs & glowing orbs instantly
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-              {[
-                { id: "amber" as const, name: "Amber", subtitle: "Sunrise", hex: "#C4622D" },
-                { id: "purple" as const, name: "Purple", subtitle: "Lavender Glow", hex: "#8E6BD9" },
-                { id: "pink" as const, name: "Pink", subtitle: "Blush Rose", hex: "#E06D94" },
-                { id: "blue" as const, name: "Blue", subtitle: "Sky Mist", hex: "#4B8FE2" },
-                { id: "white" as const, name: "White", subtitle: "Pearl Cloud", hex: "#FAF5EE" },
-              ].map((swatch) => {
-                const isSelected = accent === swatch.id;
-                return (
-                  <button
-                    key={swatch.id}
-                    type="button"
-                    onClick={() => setAccent(swatch.id)}
-                    className={`flex flex-col items-center text-center p-3.5 rounded-2xl border transition-all duration-150 ${
-                      isSelected
-                        ? "bg-terracotta/10 border-terracotta ring-2 ring-terracotta/40 scale-[1.02] shadow-xs"
-                        : "bg-cream-100/50 border-cream-200 hover:bg-cream-100 hover:border-cream-300"
-                    }`}
-                  >
-                    <div
-                      className={`size-9 rounded-full border mb-2 flex items-center justify-center shadow-xs transition-transform ${
-                        isSelected ? "scale-110 ring-2 ring-offset-2 ring-terracotta" : "border-black/20 dark:border-white/25"
-                      }`}
-                      style={{ backgroundColor: swatch.hex }}
-                    >
-                      {isSelected && (
-                        <Sparkles className={`size-4 ${swatch.id === "white" ? "text-ink" : "text-white"}`} />
-                      )}
-                    </div>
-                    <span className="text-small font-semibold text-ink">{swatch.name}</span>
-                    <span className="text-[11px] text-ink-faint">{swatch.subtitle}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </Card>
-
-        {/* 2. Account */}
+        {/* 1. Account */}
         <Card className="rounded-[28px] bg-cream-50 border-cream-200/90 shadow-sm p-6 md:p-8 space-y-6">
           <div className="flex items-center gap-3 pb-2 border-b border-cream-200/80">
             <User className="size-5 text-terracotta" />
@@ -273,7 +170,7 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        {/* 3. Calls */}
+        {/* 2. Calls */}
         <Card className="rounded-[28px] bg-cream-50 border-cream-200/90 shadow-sm p-6 md:p-8 space-y-6">
           <div className="flex items-center gap-3 pb-2 border-b border-cream-200/80">
             <PhoneCall className="size-5 text-terracotta" />
@@ -322,7 +219,7 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        {/* 4. Memory */}
+        {/* 3. Memory */}
         <Card className="rounded-[28px] bg-cream-50 border-cream-200/90 shadow-sm p-6 md:p-8 space-y-6">
           <div className="flex items-center gap-3 pb-2 border-b border-cream-200/80">
             <BookHeart className="size-5 text-terracotta" />
@@ -344,7 +241,7 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        {/* 5. Notifications */}
+        {/* 4. Notifications */}
         <Card className="rounded-[28px] bg-cream-50 border-cream-200/90 shadow-sm p-6 md:p-8 space-y-6">
           <div className="flex items-center gap-3 pb-2 border-b border-cream-200/80">
             <Bell className="size-5 text-terracotta" />
@@ -366,6 +263,63 @@ export default function SettingsPage() {
               <span className="text-small text-ink font-medium">In-app notifications</span>
               <Toggle checked={notifyApp} onCheckedChange={setNotifyApp} />
             </div>
+          </div>
+        </Card>
+
+        {/* 5. Appearance */}
+        <Card className="rounded-[28px] bg-cream-50 border-cream-200/90 shadow-sm p-6 md:p-8 space-y-6">
+          <div className="flex items-center gap-3 pb-2 border-b border-cream-200/80">
+            <Palette className="size-5 text-terracotta" />
+            <h2 className="font-display text-h4 text-ink font-medium">
+              Appearance
+            </h2>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setTheme("light")}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl border text-small font-medium transition duration-150 ${
+                  theme === "light"
+                    ? "bg-terracotta text-cream-50 border-terracotta shadow-xs"
+                    : "bg-cream-100/60 text-ink-soft border-cream-200 hover:text-ink hover:bg-cream-100"
+                }`}
+              >
+                <Sun className="size-4" />
+                <span>Light (Warm Cream)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTheme("dark")}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl border text-small font-medium transition duration-150 ${
+                  theme === "dark"
+                    ? "bg-terracotta text-cream-50 border-terracotta shadow-xs"
+                    : "bg-cream-100/60 text-ink-soft border-cream-200 hover:text-ink hover:bg-cream-100"
+                }`}
+              >
+                <Moon className="size-4" />
+                <span>Evening (Cozy Dark)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTheme("system")}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl border text-small font-medium transition duration-150 ${
+                  theme === "system"
+                    ? "bg-terracotta text-cream-50 border-terracotta shadow-xs"
+                    : "bg-cream-100/60 text-ink-soft border-cream-200 hover:text-ink hover:bg-cream-100"
+                }`}
+              >
+                <Laptop className="size-4" />
+                <span>System</span>
+              </button>
+            </div>
+
+            <p className="text-small text-ink-faint">
+              Evening wraps your dashboard in a cozy warm cocoa theme inspired by quiet nights by the fire.
+            </p>
           </div>
         </Card>
 

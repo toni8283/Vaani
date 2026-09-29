@@ -5,14 +5,11 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
 export type Theme = "light" | "dark" | "system";
-export type Accent = "amber" | "purple" | "pink" | "blue" | "white";
 
 interface ThemeContextType {
   theme: Theme;
   setTheme: (theme: Theme) => void;
   resolvedTheme: "light" | "dark";
-  accent: Accent;
-  setAccent: (accent: Accent) => void;
   isDashboard: boolean;
 }
 
@@ -22,7 +19,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [theme, setThemeState] = useState<Theme>("system");
   const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("light");
-  const [accent, setAccentState] = useState<Accent>("amber");
 
   // Determine if on dashboard/app routes vs marketing/auth
   const isDashboard = Boolean(
@@ -38,9 +34,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const savedTheme = (localStorage.getItem("vaani-theme") as Theme) || "system";
     setThemeState(savedTheme);
 
-    const savedAccent = (localStorage.getItem("vaani-accent") as Accent) || "amber";
-    setAccentState(savedAccent);
-
     const computeIsDark = (t: Theme) => {
       if (t === "system") {
         return window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -54,10 +47,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     // Dark mode ONLY applies on dashboard routes
     if (isDashboard && isDark) {
       document.documentElement.classList.add("dark");
-      document.documentElement.setAttribute("data-accent", savedAccent);
     } else {
       document.documentElement.classList.remove("dark");
-      document.documentElement.setAttribute("data-accent", isDashboard ? savedAccent : "amber");
     }
 
     // 2. Listener for system theme changes if set to system
@@ -99,15 +90,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const setAccent = (newAccent: Accent) => {
-    setAccentState(newAccent);
-    localStorage.setItem("vaani-accent", newAccent);
-    document.documentElement.setAttribute("data-accent", newAccent);
-  };
-
   return (
     <ThemeContext.Provider
-      value={{ theme, setTheme, resolvedTheme, accent, setAccent, isDashboard }}
+      value={{ theme, setTheme, resolvedTheme, isDashboard }}
     >
       {children}
     </ThemeContext.Provider>
@@ -121,8 +106,6 @@ export function useTheme() {
       theme: "light" as Theme,
       setTheme: () => {},
       resolvedTheme: "light" as "light" | "dark",
-      accent: "amber" as Accent,
-      setAccent: () => {},
       isDashboard: false,
     };
   }
