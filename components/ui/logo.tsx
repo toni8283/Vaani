@@ -25,38 +25,63 @@ export function Logo({
       ? "/brand/vaani_logo_light.svg"
       : "/brand/vaani_logo_dark.svg";
 
-  const sizeStyles = {
-    sm: markOnly ? "w-7 h-7" : "w-24 h-8",
-    md: markOnly ? "w-9 h-9" : "w-32 h-10",
-    lg: markOnly ? "w-12 h-12" : "w-44 h-14",
+  const markSizeStyles = {
+    sm: "w-7 h-7",
+    md: "w-8 h-8",
+    lg: "w-10 h-10",
+  };
+
+  const textSizeStyles = {
+    sm: "text-xl",
+    md: "text-2xl",
+    lg: "text-3xl",
   };
 
   const content = (
     <div
       className={cn(
-        "relative flex items-center justify-center select-none bg-transparent overflow-hidden",
-        sizeStyles[size],
+        "inline-flex items-center gap-2.5 select-none bg-transparent",
         className
       )}
     >
-      <Image
-        src={logoSrc}
-        alt="Vaani"
-        width={424}
-        height={363}
-        unoptimized
-        priority={priority}
+      <div
         className={cn(
-          "w-full h-full object-contain pointer-events-none transition-transform duration-200",
-          markOnly && "scale-125"
+          "relative flex items-center justify-center shrink-0 overflow-hidden",
+          markSizeStyles[size]
         )}
-      />
+      >
+        <Image
+          src={logoSrc}
+          alt="Vaani mark"
+          width={424}
+          height={363}
+          unoptimized
+          priority={priority}
+          className="w-full h-full object-contain pointer-events-none transition-transform duration-200 group-hover:scale-105"
+        />
+      </div>
+
+      {!markOnly && (
+        <span
+          className={cn(
+            "font-display font-medium tracking-tight leading-none transition-colors duration-200",
+            textSizeStyles[size],
+            variant === "light" ? "text-cream-50" : "text-ink"
+          )}
+        >
+          Vaani
+        </span>
+      )}
     </div>
   );
 
   if (href) {
     return (
-      <Link href={href} className="inline-flex items-center focus:outline-none">
+      <Link
+        href={href}
+        className="inline-flex items-center group focus:outline-none"
+        aria-label="Vaani Home"
+      >
         {content}
       </Link>
     );

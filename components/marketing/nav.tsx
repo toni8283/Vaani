@@ -29,18 +29,29 @@ export function MarketingNav() {
 
   return (
     <>
+      {/* Floating Outer Container */}
       <header
         className={cn(
-          "fixed top-0 inset-x-0 z-50 transition-all duration-300 ease-calm",
-          scrolled
-            ? "bg-cream-50/70 backdrop-blur-xl border-b border-cream-200/70 shadow-sm"
-            : "bg-transparent border-b border-transparent"
+          "fixed top-0 inset-x-0 z-50 flex items-center justify-center transition-all duration-400 ease-calm pointer-events-none",
+          scrolled ? "pt-3.5 px-4 sm:px-6" : "pt-0 px-0"
         )}
       >
-        <div className="max-w-content mx-auto px-5 md:px-8 h-20 flex items-center justify-between">
-          {/* Brand Logo */}
-          <Link href="/" className="flex items-center gap-2 group focus:outline-none" aria-label="Vaani Home">
-            <Logo size="md" />
+        {/* Nav Shell: Transforms from full-width bar at top to floating glass pill when scrolled */}
+        <div
+          className={cn(
+            "w-full transition-all duration-400 ease-calm flex items-center justify-between pointer-events-auto",
+            scrolled
+              ? "max-w-4xl h-16 px-6 md:px-8 rounded-full bg-cream-50/80 backdrop-blur-2xl border border-cream-200/90 shadow-md shadow-ink/5"
+              : "max-w-content h-20 px-5 md:px-8 rounded-none bg-transparent border-b border-transparent shadow-none"
+          )}
+        >
+          {/* Brand Logo with name */}
+          <Link
+            href="/"
+            className="flex items-center gap-2 group focus:outline-none"
+            aria-label="Vaani Home"
+          >
+            <Logo size={scrolled ? "sm" : "md"} />
           </Link>
 
           {/* Desktop Navigation Links */}
@@ -58,35 +69,30 @@ export function MarketingNav() {
 
           {/* Desktop Action Buttons */}
           <div className="hidden md:flex items-center gap-3">
-            <Button variant="ghost" asChild>
+            <Button variant="ghost" size="sm" asChild>
               <Link href="/login">Sign in</Link>
             </Button>
-            <Button variant="primary" asChild>
+            <Button variant="primary" size="sm" asChild>
               <Link href="/signup">Set up Vaani</Link>
             </Button>
           </div>
 
           {/* Mobile Right Controls: Primary CTA + Hamburger */}
           <div className="flex md:hidden items-center gap-2">
-            <Button variant="primary" size="sm" asChild>
+            <Button variant="primary" size="sm" asChild className="h-8 px-3 text-xs">
               <Link href="/signup">Set up Vaani</Link>
             </Button>
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-full text-ink hover:bg-cream-100/60 focus:outline-none focus:ring-2 focus:ring-terracotta/30"
+              className="p-1.5 rounded-full text-ink hover:bg-cream-100/60 focus:outline-none focus:ring-2 focus:ring-terracotta/30"
               aria-label="Toggle navigation menu"
               aria-expanded={mobileMenuOpen}
             >
-              {mobileMenuOpen ? <X className="size-6" /> : <Menu className="size-6" />}
+              {mobileMenuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
             </button>
           </div>
         </div>
-
-        {/* 1px gradient line under nav when scrolled */}
-        {scrolled && (
-          <div className="h-px w-full bg-gradient-to-r from-transparent via-terracotta/25 to-transparent pointer-events-none" />
-        )}
       </header>
 
       {/* Mobile Drawer Sheet */}
@@ -98,22 +104,22 @@ export function MarketingNav() {
           onClick={() => setMobileMenuOpen(false)}
         >
           <div
-            className="fixed inset-x-0 top-20 bg-cream-50/95 backdrop-blur-2xl border-b border-cream-200 p-6 shadow-lg flex flex-col gap-5 animate-in slide-in-from-top-4 duration-300"
+            className="fixed inset-x-4 top-24 rounded-3xl bg-cream-50/95 backdrop-blur-2xl border border-cream-200 p-6 shadow-xl flex flex-col gap-5 animate-in slide-in-from-top-4 duration-300"
             onClick={(e) => e.stopPropagation()}
           >
-            <nav className="flex flex-col gap-4 text-body font-medium text-ink">
+            <nav className="flex flex-col gap-3 text-body font-medium text-ink">
               {navLinks.map((link) => (
                 <a
                   key={link.href}
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="py-2 border-b border-cream-100 hover:text-terracotta transition-colors"
+                  className="py-2.5 px-3 rounded-xl hover:bg-cream-100/70 hover:text-terracotta transition-colors"
                 >
                   {link.label}
                 </a>
               ))}
             </nav>
-            <div className="flex flex-col gap-3 pt-2">
+            <div className="flex flex-col gap-2.5 pt-2 border-t border-cream-200/80">
               <Button variant="outline" asChild className="w-full">
                 <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
                   Sign in
