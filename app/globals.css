@@ -78,6 +78,14 @@
 }
 
 /* Cute Warm Cozy "Evening" Theme Overrides */
+.dark .vaani-logo-mark {
+  filter: brightness(0) invert(1) !important;
+}
+
+.dark .vaani-logo-text {
+  color: #FFFFFF !important;
+}
+
 .dark .bg-cream {
   background-color: #171210 !important;
 }
@@ -108,142 +116,15 @@
 }
 
 .dark .text-ink {
-  color: #FAF5EE;
+  color: #FAF5EE !important;
 }
 
 .dark .text-ink-soft {
-  color: #B3A59B;
+  color: #B3A59B !important;
 }
 
 .dark .text-ink-faint {
-  color: #8C7E74;
-}
-
-/* ==========================================================================
-   Cute & Premium Accent Themes (Amber, Purple, Pink, Blue, White)
-   ========================================================================== */
-
-:root,
-[data-accent="amber"] {
-  --accent-primary: #C4622D;
-  --accent-hover: #AD5224;
-  --accent-subtle: #F6E3D6;
-  --accent-deep: #8F3F17;
-  --accent-glow: #F2A65A;
-  --accent-soft: #FBD9A8;
-}
-
-[data-accent="purple"] {
-  --accent-primary: #8E6BD9;
-  --accent-hover: #7A53CB;
-  --accent-subtle: #F0EBFC;
-  --accent-deep: #6543B5;
-  --accent-glow: #BFA6F5;
-  --accent-soft: #D9CEF7;
-}
-
-[data-accent="pink"] {
-  --accent-primary: #E06D94;
-  --accent-hover: #D15580;
-  --accent-subtle: #FDE8EF;
-  --accent-deep: #B33D66;
-  --accent-glow: #F7A8C4;
-  --accent-soft: #FAD4E2;
-}
-
-[data-accent="blue"] {
-  --accent-primary: #4B8FE2;
-  --accent-hover: #3578CE;
-  --accent-subtle: #EBF3FE;
-  --accent-deep: #2563EB;
-  --accent-glow: #93C5FD;
-  --accent-soft: #BFDBFE;
-}
-
-[data-accent="white"] {
-  --accent-primary: #3B312B;
-  --accent-hover: #231B17;
-  --accent-subtle: #EDE7DE;
-  --accent-deep: #171210;
-  --accent-glow: #E2D9CC;
-  --accent-soft: #EAE3D8;
-}
-
-.dark[data-accent="purple"],
-.dark [data-accent="purple"] {
-  --accent-subtle: #2D2040;
-  --accent-deep: #D6C7FB;
-}
-
-.dark[data-accent="pink"],
-.dark [data-accent="pink"] {
-  --accent-subtle: #3E1E2A;
-  --accent-deep: #FBCFE0;
-}
-
-.dark[data-accent="blue"],
-.dark [data-accent="blue"] {
-  --accent-subtle: #192845;
-  --accent-deep: #BFDBFE;
-}
-
-.dark[data-accent="white"],
-.dark [data-accent="white"] {
-  --accent-primary: #FAF5EE;
-  --accent-hover: #FFFFFF;
-  --accent-subtle: #2D231E;
-  --accent-deep: #FFFFFF;
-  --accent-glow: #FFFFFF;
-  --accent-soft: #E0D5C7;
-}
-
-/* Dynamic Accent Applied to Classes */
-[data-accent="purple"] .bg-terracotta,
-[data-accent="pink"] .bg-terracotta,
-[data-accent="blue"] .bg-terracotta,
-[data-accent="white"] .bg-terracotta {
-  background-color: var(--accent-primary) !important;
-}
-
-[data-accent="purple"] .hover\:bg-terracotta-hover:hover,
-[data-accent="pink"] .hover\:bg-terracotta-hover:hover,
-[data-accent="blue"] .hover\:bg-terracotta-hover:hover,
-[data-accent="white"] .hover\:bg-terracotta-hover:hover {
-  background-color: var(--accent-hover) !important;
-}
-
-[data-accent="purple"] .text-terracotta,
-[data-accent="pink"] .text-terracotta,
-[data-accent="blue"] .text-terracotta,
-[data-accent="white"] .text-terracotta {
-  color: var(--accent-primary) !important;
-}
-
-[data-accent="purple"] .text-terracotta-deep,
-[data-accent="pink"] .text-terracotta-deep,
-[data-accent="blue"] .text-terracotta-deep,
-[data-accent="white"] .text-terracotta-deep {
-  color: var(--accent-deep) !important;
-}
-
-[data-accent="purple"] .bg-terracotta-subtle,
-[data-accent="pink"] .bg-terracotta-subtle,
-[data-accent="blue"] .bg-terracotta-subtle,
-[data-accent="white"] .bg-terracotta-subtle {
-  background-color: var(--accent-subtle) !important;
-}
-
-[data-accent="purple"] .border-terracotta,
-[data-accent="pink"] .border-terracotta,
-[data-accent="blue"] .border-terracotta,
-[data-accent="white"] .border-terracotta {
-  border-color: var(--accent-primary) !important;
-}
-
-.dark[data-accent="white"] .bg-terracotta,
-.dark [data-accent="white"] .bg-terracotta {
-  background-color: #FAF5EE !important;
-  color: #171210 !important;
+  color: #8C7E74 !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

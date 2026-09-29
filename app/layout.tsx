@@ -29,13 +29,20 @@ export const metadata: Metadata = {
 const themeScript = `
   (function() {
     try {
-      var t = localStorage.getItem('vaani-theme') || 'system';
-      var d = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-      if (d) document.documentElement.classList.add('dark');
-      else document.documentElement.classList.remove('dark');
+      var p = window.location.pathname;
+      var isDashboard = p !== '/' && !p.startsWith('/login') && !p.startsWith('/signup') && !p.startsWith('/auth');
+      if (isDashboard) {
+        var t = localStorage.getItem('vaani-theme') || 'system';
+        var d = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        if (d) document.documentElement.classList.add('dark');
+        else document.documentElement.classList.remove('dark');
 
-      var a = localStorage.getItem('vaani-accent') || 'amber';
-      document.documentElement.setAttribute('data-accent', a);
+        var a = localStorage.getItem('vaani-accent') || 'amber';
+        document.documentElement.setAttribute('data-accent', a);
+      } else {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.setAttribute('data-accent', 'amber');
+      }
     } catch (e) {}
   })();
 `;

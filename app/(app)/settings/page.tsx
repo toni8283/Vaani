@@ -22,6 +22,7 @@ import {
   Sun,
   Moon,
   Laptop,
+  Check,
 } from "lucide-react";
 import { useTheme, type Accent } from "@/components/theme-provider";
 
@@ -35,7 +36,7 @@ const ACCENT_OPTIONS = [
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { theme, setTheme, accent, setAccent } = useTheme();
+  const { theme, setTheme, accent, setAccent, resolvedTheme } = useTheme();
 
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
@@ -110,14 +111,14 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto pb-12">
+    <div className="space-y-8 max-w-4xl mx-auto pb-16">
       {/* Header */}
       <div>
         <h1 className="font-display text-h3 md:text-display-lg text-ink font-medium tracking-tight">
           Settings
         </h1>
         <p className="text-body text-ink-soft">
-          Manage your account preferences, memory, and call defaults.
+          Customize your dashboard appearance, accents, memory, and call defaults.
         </p>
       </div>
 
@@ -127,8 +128,125 @@ export default function SettingsPage() {
         </div>
       )}
 
+      {/* 
+        1. APPEARANCE & ACCENT (PROMINENT AT TOP) 
+      */}
+      <Card className="rounded-[28px] bg-cream-50 border-cream-200/90 shadow-sm p-6 md:p-8 space-y-6">
+        <div className="flex items-center gap-3 pb-2 border-b border-cream-200/80">
+          <Palette className="size-5 text-terracotta" />
+          <div>
+            <h2 className="font-display text-h4 text-ink font-medium">
+              Appearance & Colors
+            </h2>
+            <p className="text-xs text-ink-faint">
+              Personalize your dashboard theme and accent colors.
+            </p>
+          </div>
+        </div>
+
+        {/* Theme Mode Selector */}
+        <div className="space-y-3">
+          <label className="text-small font-semibold text-ink block">
+            Dashboard Theme
+          </label>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setTheme("light")}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl border text-small font-medium transition duration-150 ${
+                theme === "light"
+                  ? "bg-terracotta text-cream-50 border-terracotta shadow-xs"
+                  : "bg-cream-100/60 text-ink-soft border-cream-200 hover:text-ink hover:bg-cream-100"
+              }`}
+            >
+              <Sun className="size-4" />
+              <span>Light (Warm Cream)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setTheme("dark")}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl border text-small font-medium transition duration-150 ${
+                theme === "dark"
+                  ? "bg-terracotta text-cream-50 border-terracotta shadow-xs"
+                  : "bg-cream-100/60 text-ink-soft border-cream-200 hover:text-ink hover:bg-cream-100"
+              }`}
+            >
+              <Moon className="size-4" />
+              <span>Evening (Cozy Dark)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setTheme("system")}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl border text-small font-medium transition duration-150 ${
+                theme === "system"
+                  ? "bg-terracotta text-cream-50 border-terracotta shadow-xs"
+                  : "bg-cream-100/60 text-ink-soft border-cream-200 hover:text-ink hover:bg-cream-100"
+              }`}
+            >
+              <Laptop className="size-4" />
+              <span>Auto (System)</span>
+            </button>
+          </div>
+          <p className="text-xs text-ink-faint">
+            Dark mode applies exclusively to your dashboard and call screens. The landing and sign-in pages stay in their natural sunrise warmth.
+          </p>
+        </div>
+
+        {/* Dashboard Accent Colors */}
+        <div className="pt-5 border-t border-cream-200/80 space-y-3">
+          <div>
+            <label className="text-small font-semibold text-ink block">
+              Dashboard Accent Color
+            </label>
+            <p className="text-xs text-ink-faint mt-0.5">
+              Choose a soft, premium accent tone for buttons, glowing indicators, and active highlights.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-1">
+            {ACCENT_OPTIONS.map((opt) => {
+              const isSelected = accent === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setAccent(opt.id)}
+                  className={`flex items-center gap-2.5 p-3.5 rounded-2xl border text-small font-medium transition-all duration-150 text-left ${
+                    isSelected
+                      ? "border-terracotta bg-cream-100/90 shadow-sm ring-2 ring-terracotta/40"
+                      : "border-cream-200/80 bg-cream-50/60 hover:bg-cream-100/70 hover:border-cream-300"
+                  }`}
+                >
+                  <span
+                    className="size-5 rounded-full shrink-0 shadow-xs border border-black/15 flex items-center justify-center"
+                    style={{
+                      backgroundColor: opt.color,
+                      boxShadow: isSelected ? `0 0 12px ${opt.glow}` : undefined,
+                    }}
+                  >
+                    {isSelected && (
+                      <Check className="size-3 text-white drop-shadow" />
+                    )}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="text-small font-semibold text-ink leading-tight truncate">
+                      {opt.label}
+                    </div>
+                    <div className="text-[11px] text-ink-faint leading-tight truncate">
+                      {opt.sub}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </Card>
+
       <form onSubmit={handleSaveProfile} className="space-y-6">
-        {/* 1. Account */}
+        {/* 2. Account */}
         <Card className="rounded-[28px] bg-cream-50 border-cream-200/90 shadow-sm p-6 md:p-8 space-y-6">
           <div className="flex items-center gap-3 pb-2 border-b border-cream-200/80">
             <User className="size-5 text-terracotta" />
@@ -178,7 +296,7 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        {/* 2. Calls */}
+        {/* 3. Calls */}
         <Card className="rounded-[28px] bg-cream-50 border-cream-200/90 shadow-sm p-6 md:p-8 space-y-6">
           <div className="flex items-center gap-3 pb-2 border-b border-cream-200/80">
             <PhoneCall className="size-5 text-terracotta" />
@@ -188,38 +306,46 @@ export default function SettingsPage() {
           </div>
 
           <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-small font-medium text-ink">
+            <div>
+              <label className="text-small font-medium text-ink block mb-2">
                 Default voice
               </label>
-              <div className="flex flex-wrap gap-2">
+              <div className="grid sm:grid-cols-3 gap-3">
                 {[
-                  { id: "claire", label: "Claire (calm & clear)" },
-                  { id: "ivy", label: "Ivy (bright & friendly)" },
-                  { id: "dawn", label: "Dawn (soft & unhurried)" },
+                  { id: "claire", name: "Claire", desc: "calm and clear" },
+                  { id: "ivy", name: "Ivy", desc: "bright and friendly" },
+                  { id: "dawn", name: "Dawn", desc: "soft and unhurried" },
                 ].map((v) => (
-                  <Chip
+                  <button
                     key={v.id}
-                    variant={defaultVoice === v.id ? "terracotta" : "neutral"}
-                    size="default"
+                    type="button"
                     onClick={() => setDefaultVoice(v.id)}
-                    className="cursor-pointer"
+                    className={`p-4 rounded-2xl border text-left transition ${
+                      defaultVoice === v.id
+                        ? "border-terracotta bg-cream-100/80 shadow-xs"
+                        : "border-cream-200 bg-cream-50 hover:bg-cream-100/50"
+                    }`}
                   >
-                    {v.label}
-                  </Chip>
+                    <div className="font-semibold text-ink text-small">{v.name}</div>
+                    <div className="text-xs text-ink-soft">{v.desc}</div>
+                  </button>
                 ))}
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-cream-100/60 border border-cream-200/70 space-y-1">
-              <div className="text-small font-medium text-ink">Quiet hours</div>
-              <p className="text-small text-ink-soft">
-                Never call before 9:00 am or after 8:00 pm.
+            <div className="p-4 rounded-2xl bg-cream-100/70 border border-cream-200 space-y-1">
+              <span className="text-xs font-semibold uppercase tracking-wider text-ink-faint">
+                Quiet hours
+              </span>
+              <p className="text-small text-ink font-medium">
+                Never call before 9:00 am or after 8:00 pm
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-cream-100/60 border border-cream-200/70 space-y-1">
-              <div className="text-small font-medium text-ink">AI Disclosure</div>
+            <div className="p-4 rounded-2xl bg-cream-100/70 border border-cream-200 space-y-1">
+              <span className="text-xs font-semibold uppercase tracking-wider text-ink-faint">
+                Always honest
+              </span>
               <p className="text-small text-ink-soft italic">
                 &ldquo;Vaani will always introduce itself as an AI calling on your behalf.&rdquo;
               </p>
@@ -227,7 +353,7 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        {/* 3. Memory */}
+        {/* 4. Memory */}
         <Card className="rounded-[28px] bg-cream-50 border-cream-200/90 shadow-sm p-6 md:p-8 space-y-6">
           <div className="flex items-center gap-3 pb-2 border-b border-cream-200/80">
             <BookHeart className="size-5 text-terracotta" />
@@ -236,20 +362,32 @@ export default function SettingsPage() {
             </h2>
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <div className="text-small font-medium text-ink">
-                Let Vaani remember
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-small font-medium text-ink">Let Vaani remember</div>
+                <div className="text-xs text-ink-soft">
+                  Keep details between calls so every conversation feels like a continuation.
+                </div>
               </div>
-              <div className="text-xs text-ink-faint">
-                Enables natural continuity across calls.
-              </div>
+              <Toggle checked={memoryEnabled} onCheckedChange={setMemoryEnabled} />
             </div>
-            <Toggle checked={memoryEnabled} onCheckedChange={setMemoryEnabled} />
+
+            <div className="pt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-rust hover:text-rust hover:bg-rust/10 border border-rust/30"
+                onClick={() => alert("All stored memories for your contacts have been reset.")}
+              >
+                Forget everything
+              </Button>
+            </div>
           </div>
         </Card>
 
-        {/* 4. Notifications */}
+        {/* 5. Notifications */}
         <Card className="rounded-[28px] bg-cream-50 border-cream-200/90 shadow-sm p-6 md:p-8 space-y-6">
           <div className="flex items-center gap-3 pb-2 border-b border-cream-200/80">
             <Bell className="size-5 text-terracotta" />
@@ -270,107 +408,6 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between">
               <span className="text-small text-ink font-medium">In-app notifications</span>
               <Toggle checked={notifyApp} onCheckedChange={setNotifyApp} />
-            </div>
-          </div>
-        </Card>
-
-        {/* 5. Appearance */}
-        <Card className="rounded-[28px] bg-cream-50 border-cream-200/90 shadow-sm p-6 md:p-8 space-y-6">
-          <div className="flex items-center gap-3 pb-2 border-b border-cream-200/80">
-            <Palette className="size-5 text-terracotta" />
-            <h2 className="font-display text-h4 text-ink font-medium">
-              Appearance
-            </h2>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setTheme("light")}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl border text-small font-medium transition duration-150 ${
-                  theme === "light"
-                    ? "bg-terracotta text-cream-50 border-terracotta shadow-xs"
-                    : "bg-cream-100/60 text-ink-soft border-cream-200 hover:text-ink hover:bg-cream-100"
-                }`}
-              >
-                <Sun className="size-4" />
-                <span>Light (Warm Cream)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setTheme("dark")}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl border text-small font-medium transition duration-150 ${
-                  theme === "dark"
-                    ? "bg-terracotta text-cream-50 border-terracotta shadow-xs"
-                    : "bg-cream-100/60 text-ink-soft border-cream-200 hover:text-ink hover:bg-cream-100"
-                }`}
-              >
-                <Moon className="size-4" />
-                <span>Evening (Cozy Dark)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setTheme("system")}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl border text-small font-medium transition duration-150 ${
-                  theme === "system"
-                    ? "bg-terracotta text-cream-50 border-terracotta shadow-xs"
-                    : "bg-cream-100/60 text-ink-soft border-cream-200 hover:text-ink hover:bg-cream-100"
-                }`}
-              >
-                <Laptop className="size-4" />
-                <span>System</span>
-              </button>
-            </div>
-
-            <p className="text-small text-ink-faint">
-              Evening wraps your dashboard in a cozy warm cocoa theme inspired by quiet nights by the fire.
-            </p>
-
-            {/* Accent Color Customizer */}
-            <div className="pt-5 border-t border-cream-200/80 space-y-3">
-              <div>
-                <h3 className="text-small font-semibold text-ink">Dashboard accent</h3>
-                <p className="text-xs text-ink-faint mt-0.5">
-                  Choose a soft, premium accent tone for your buttons, active indicators, and glowing highlights.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 pt-1">
-                {ACCENT_OPTIONS.map((opt) => {
-                  const isSelected = accent === opt.id;
-                  return (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => setAccent(opt.id)}
-                      className={`flex items-center gap-2.5 p-3 rounded-2xl border text-small font-medium transition-all duration-150 ${
-                        isSelected
-                          ? "border-terracotta bg-cream-100/90 shadow-xs ring-2 ring-terracotta/30"
-                          : "border-cream-200/80 bg-cream-50/60 hover:bg-cream-100/70 hover:border-cream-300"
-                      }`}
-                    >
-                      <span
-                        className="size-4 rounded-full shrink-0 shadow-xs border border-black/10"
-                        style={{
-                          backgroundColor: opt.color,
-                          boxShadow: isSelected ? `0 0 10px ${opt.glow}` : undefined,
-                        }}
-                      />
-                      <div className="text-left min-w-0">
-                        <div className="text-xs font-semibold text-ink leading-tight truncate">
-                          {opt.label}
-                        </div>
-                        <div className="text-[10px] text-ink-faint leading-tight truncate">
-                          {opt.sub}
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
             </div>
           </div>
         </Card>
