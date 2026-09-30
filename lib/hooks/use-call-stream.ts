@@ -33,7 +33,16 @@ export function useCallStream({ callId, initialCall }: UseCallStreamOptions) {
   const [durationSeconds, setDurationSeconds] = useState<number>(
     initialCall?.duration_seconds || 0
   );
-  const [phoneOpen, setPhoneOpen] = useState(false);
+  const [phoneOpen, setPhoneOpen] = useState<boolean>(() => {
+    const isBrowserOnly = process.env.NEXT_PUBLIC_PHONE_CALLS !== "true";
+    if (
+      initialCall?.status === "ringing" &&
+      (initialCall?.channel === "browser" || isBrowserOnly)
+    ) {
+      return true;
+    }
+    return false;
+  });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [fallbackToast, setFallbackToast] = useState<string | null>(null);
   const [isEndingOrWriting, setIsEndingOrWriting] = useState(false);
@@ -145,6 +154,13 @@ export function useCallStream({ callId, initialCall }: UseCallStreamOptions) {
             setDurationSeconds(currentCall.duration_seconds);
           }
 
+          if (
+            currentCall.status === "ringing" &&
+            (currentCall.channel === "browser" || process.env.NEXT_PUBLIC_PHONE_CALLS !== "true")
+          ) {
+            setPhoneOpen(true);
+          }
+
           // If fallback is already available on initial load
           if (
             currentCall.fallback_available ||
@@ -212,6 +228,13 @@ export function useCallStream({ callId, initialCall }: UseCallStreamOptions) {
                   setNeedsSummary(Boolean(updated.needs_summary));
                 }
                 setCallData((prev: any) => ({ ...prev, ...updated }));
+
+                if (
+                  updated.status === "ringing" &&
+                  (updated.channel === "browser" || process.env.NEXT_PUBLIC_PHONE_CALLS !== "true")
+                ) {
+                  setPhoneOpen(true);
+                }
 
                 // Auto-close companion phone when real call ends
                 if (
@@ -368,9 +391,21 @@ export function useCallStream({ callId, initialCall }: UseCallStreamOptions) {
     }
   }, [callId]);
 
-  const answerCall = useCallback(() => {
+  const answerCall = useCallback(async () => {
     setStatus("live");
-  }, []);
+    try {
+      const supabase = createClient();
+      await supabase
+        .from("calls")
+        .update({
+          status: "live",
+          started_at: new Date().toISOString(),
+        })
+        .eq("id", callId);
+    } catch (err) {
+      console.error("Error setting call to live:", err);
+    }
+  }, [callId]);
 
   const endCall = useCallback(async () => {
     if (timerIntervalRef.current) {

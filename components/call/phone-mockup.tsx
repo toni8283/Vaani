@@ -284,9 +284,11 @@ export function PhoneMockup({
                         <h2 className="text-2xl font-semibold tracking-tight text-white">
                           {callerNickname || callerName}
                         </h2>
-                        <p className="text-xs text-white/70 font-mono">
-                          {callerPhone}
-                        </p>
+                        {callerPhone && (
+                          <p className="text-xs text-white/70 font-mono">
+                            {callerPhone}
+                          </p>
+                        )}
                       </div>
 
                       {/* Pulsing Avatar */}
@@ -373,6 +375,27 @@ export function PhoneMockup({
                           </div>
                           <p className="text-[11px] text-white/90 leading-tight">
                             Vaani needs your microphone to talk. Allow it in your browser&apos;s address bar and try again.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => browserCall.retryMic()}
+                            className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-rust hover:bg-rust/90 text-white text-xs font-semibold shadow-xs"
+                          >
+                            <RefreshCw className="size-3" />
+                            <span>Try again</span>
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Connection Failure Error / Retry */}
+                      {browserCall?.errorMessage && !browserCall?.micDenied && (
+                        <div className="mx-2 p-2.5 rounded-xl bg-rust/20 border border-rust/40 text-center space-y-1.5">
+                          <div className="flex items-center justify-center gap-1 text-rust text-xs font-medium">
+                            <AlertCircle className="size-3.5" />
+                            <span>Call Failed</span>
+                          </div>
+                          <p className="text-[11px] text-white/90 leading-tight">
+                            {browserCall.errorMessage}
                           </p>
                           <button
                             type="button"

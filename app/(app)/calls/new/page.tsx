@@ -197,10 +197,13 @@ function CreateCallWizardContent() {
       setError("Please provide their name.");
       return false;
     }
-    const phoneCheck = validatePhoneNumber(phone);
-    if (!phoneCheck.isValid || !phoneCheck.e164) {
-      setError(phoneCheck.error || "That number doesn't look quite right. Try including the country code, like +91.");
-      return false;
+    // Phone number is optional in wizard
+    if (phone.trim()) {
+      const phoneCheck = validatePhoneNumber(phone);
+      if (!phoneCheck.isValid || !phoneCheck.e164) {
+        setError(phoneCheck.error || "That number doesn't look quite right. Try including the country code, like +91.");
+        return false;
+      }
     }
     return true;
   };
@@ -246,7 +249,8 @@ function CreateCallWizardContent() {
   const handleSubmit = async () => {
     setError(null);
 
-    if (!consentConfirmed) {
+    const hasPhone = Boolean(phone.trim());
+    if (hasPhone && !consentConfirmed) {
       setError("Please confirm consent to proceed.");
       return;
     }
@@ -254,19 +258,32 @@ function CreateCallWizardContent() {
     try {
       setLoading(true);
       const supabase = createClient();
-      const {
+      let {
         data: { user },
       } = await supabase.auth.getUser();
+
+      // Support guest creation seamlessly
+      if (!user) {
+        const { data: anonData, error: anonErr } = await supabase.auth.signInAnonymously();
+        if (anonErr) {
+          console.error("Guest sign-in error in wizard:", anonErr);
+        }
+        user = anonData?.user || null;
+      }
 
       if (!user) {
         setError("You must be logged in to create a call.");
         return;
       }
 
-      const phoneCheck = validatePhoneNumber(phone);
-      if (!phoneCheck.isValid || !phoneCheck.e164) {
-        setError(phoneCheck.error || "Invalid phone number.");
-        return;
+      let phoneE164: string | null = null;
+      if (hasPhone) {
+        const phoneCheck = validatePhoneNumber(phone);
+        if (!phoneCheck.isValid || !phoneCheck.e164) {
+          setError(phoneCheck.error || "Invalid phone number.");
+          return;
+        }
+        phoneE164 = phoneCheck.e164;
       }
 
       let targetPersonId = personId;
@@ -277,18 +294,22 @@ function CreateCallWizardContent() {
         await supabase
           .from("people")
           .update({
-            consent_confirmed: true,
-            phone_e164: phoneCheck.e164,
+            consent_confirmed: hasPhone ? true : consentConfirmed,
+            phone_e164: phoneE164,
           })
           .eq("id", targetPersonId);
       } else {
-        // Check if person exists with same phone for this user
-        const { data: existingPerson } = await supabase
-          .from("people")
-          .select("id")
-          .eq("user_id", user.id)
-          .eq("phone_e164", phoneCheck.e164)
-          .maybeSingle();
+        // Check if person exists with same phone for this user (if phone provided)
+        let existingPerson: { id: string } | null = null;
+        if (phoneE164) {
+          const { data } = await supabase
+            .from("people")
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("phone_e164", phoneE164)
+            .maybeSingle();
+          existingPerson = data;
+        }
 
         if (existingPerson) {
           targetPersonId = existingPerson.id;
@@ -296,11 +317,11 @@ function CreateCallWizardContent() {
             .from("people")
             .update({
               consent_confirmed: true,
-              phone_e164: phoneCheck.e164,
+              phone_e164: phoneE164,
             })
             .eq("id", existingPerson.id);
         } else {
-          // Insert new person
+          // Insert new person (phone_e164 is nullable)
           const { data: newPerson, error: personErr } = await supabase
             .from("people")
             .insert({
@@ -308,12 +329,12 @@ function CreateCallWizardContent() {
               name: name.trim(),
               nickname: nickname.trim() || name.trim(),
               relationship,
-              phone_e164: phoneCheck.e164,
+              phone_e164: phoneE164,
               voice,
               tone,
               language,
               memory_enabled: memoryEnabled,
-              consent_confirmed: true,
+              consent_confirmed: hasPhone ? true : consentConfirmed,
             })
             .select()
             .single();
@@ -346,7 +367,11 @@ function CreateCallWizardContent() {
       }
 
       // 3. Insert Call row
-      const status = scheduleType === "now" ? "connecting" : "scheduled";
+      const isPhoneCallsEnabled = process.env.NEXT_PUBLIC_PHONE_CALLS === "true";
+      const status = scheduleType === "now"
+        ? (isPhoneCallsEnabled ? "connecting" : "ringing")
+        : "scheduled";
+      const channel = isPhoneCallsEnabled ? "phone" : "browser";
 
       const { data: callRow, error: callErr } = await supabase
         .from("calls")
@@ -354,6 +379,7 @@ function CreateCallWizardContent() {
           user_id: user.id,
           person_id: targetPersonId,
           status,
+          channel,
           notes: questions.trim() || null,
           personal_message: personalMessage.trim() || null,
           scheduled_for: scheduledForIso,
@@ -365,16 +391,18 @@ function CreateCallWizardContent() {
 
       if (callErr) throw callErr;
 
-      // If status is connecting (Right now), navigate to live call screen
-      if (status === "connecting") {
-        try {
-          await fetch("/api/calls/start", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ callId: callRow.id, force: true }),
-          });
-        } catch (fetchErr) {
-          console.warn("Could not reach call server:", fetchErr);
+      // If status is connecting or ringing (Right now), navigate to live call screen
+      if (status === "connecting" || status === "ringing") {
+        if (isPhoneCallsEnabled) {
+          try {
+            await fetch("/api/calls/start", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ callId: callRow.id, force: true }),
+            });
+          } catch (fetchErr) {
+            console.warn("Could not reach call server:", fetchErr);
+          }
         }
 
         router.push(`/calls/${callRow.id}/live`);
@@ -582,14 +610,15 @@ function CreateCallWizardContent() {
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="+91 98765 43210"
                     disabled={isChoosingExisting}
-                    required
                   />
                   <p className="text-xs text-ink-muted">
-                    Include the country code, like +91 followed by 10 digits (e.g. +91 98765 43210).
+                    Optional. Phone calls are coming soon.
                   </p>
-                  <p className="text-[11px] text-warm-amber dark:text-amber-soft bg-warm-amber/10 dark:bg-amber-soft/10 p-2 rounded-xl mt-1">
-                    📞 <strong>Twilio Trial:</strong> Real telephony only rings verified numbers in Twilio Console. For any other number, Vaani connects directly with interactive voice and live microphone in your browser!
-                  </p>
+                  {process.env.NEXT_PUBLIC_PHONE_CALLS === "true" && (
+                    <p className="text-[11px] text-warm-amber dark:text-amber-soft bg-warm-amber/10 dark:bg-amber-soft/10 p-2 rounded-xl mt-1">
+                      📞 <strong>Twilio Trial:</strong> Real telephony only rings verified numbers in Twilio Console. For any other number, Vaani connects directly with interactive voice and live microphone in your browser!
+                    </p>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -922,21 +951,21 @@ function CreateCallWizardContent() {
                 </p>
               </div>
 
-              {/* Required Consent Checkbox */}
-              <label className="flex items-start gap-3 p-4 rounded-2xl bg-cream-100/50 border border-cream-200/80 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={consentConfirmed}
-                  onChange={(e) => setConsentConfirmed(e.target.checked)}
-                  className="mt-1 size-4 rounded text-terracotta focus:ring-terracotta"
-                  required
-                />
-                <span className="text-small text-ink leading-relaxed">
-                  {isDemo
-                    ? "This is my own number and I'm happy to receive this call."
-                    : `I've checked that ${nickname.trim() || name.trim() || "they"} is happy to receive calls from Vaani.`}
-                </span>
-              </label>
+              {/* Consent Checkbox: required only when a number is given */}
+              {Boolean(phone.trim()) && (
+                <label className="flex items-start gap-3 p-4 rounded-2xl bg-cream-100/50 border border-cream-200/80 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={consentConfirmed}
+                    onChange={(e) => setConsentConfirmed(e.target.checked)}
+                    className="mt-1 size-4 rounded text-terracotta focus:ring-terracotta"
+                    required
+                  />
+                  <span className="text-small text-ink leading-relaxed">
+                    I&apos;m happy for Vaani to call {name.trim() || nickname.trim() || "them"}.
+                  </span>
+                </label>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -974,7 +1003,7 @@ function CreateCallWizardContent() {
                 type="button"
                 variant="primary"
                 onClick={handleSubmit}
-                disabled={loading || !consentConfirmed}
+                disabled={loading || (Boolean(phone.trim()) && !consentConfirmed)}
                 className="gap-2 shadow-xs"
               >
                 {loading ? (

@@ -28,10 +28,13 @@ import { MeshGradient } from "@/components/marketing/mesh-gradient";
 import { HeroPhoneForm } from "@/components/marketing/hero-phone-form";
 import { LiveCallPreview } from "@/components/marketing/live-call-preview";
 import { DemoTranscript } from "@/components/marketing/demo-transcript";
+import { TalkToVaaniButton } from "@/components/call/talk-to-vaani-button";
 
 import { GuestButton } from "@/components/auth/guest-button";
 
 export default function LandingPage() {
+  const isPhoneCallsEnabled = process.env.NEXT_PUBLIC_PHONE_CALLS === "true";
+
   return (
     <div className="relative overflow-hidden w-full">
       {/* ────────────────────────────────────────────────────────────
@@ -62,30 +65,32 @@ export default function LandingPage() {
           {/* Subline Body */}
           <BlurReveal delay={0.2} y={14}>
             <p className="mt-6 text-body md:text-body-lg text-ink-soft max-w-2xl mx-auto leading-relaxed">
-              Vaani phones the people you love, has a real conversation, and tells you how
-              they&apos;re doing &mdash; so a busy week never turns into a quiet month. Always honest
-              about being an AI. Always on your behalf.
+              {isPhoneCallsEnabled
+                ? "Vaani phones the people you love, has a real conversation, and tells you how they're doing — so a busy week never turns into a quiet month. Always honest about being an AI. Always on your behalf."
+                : "Vaani talks with the people you love, has a real conversation, and tells you how they're doing — so a busy week never turns into a quiet month. Always honest about being an AI. Always on your behalf."}
             </p>
           </BlurReveal>
 
           {/* CTA Buttons */}
           <BlurReveal delay={0.3} y={16}>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Button variant="primary" size="lg" asChild className="h-12 px-7 text-base font-semibold">
-                <Link href="/signup">Set up Vaani</Link>
-              </Button>
+              <TalkToVaaniButton variant="primary" size="lg" className="h-12 px-7 text-base font-semibold">
+                Talk to Vaani
+              </TalkToVaaniButton>
               <Button variant="ghost" size="lg" asChild className="text-ink-soft hover:text-ink font-medium">
-                <a href="#live-demo">Hear a sample call</a>
+                <a href="#live-demo">Hear a sample conversation</a>
               </Button>
             </div>
           </BlurReveal>
 
-          {/* Phone Pill "Let Vaani call you" */}
-          <BlurReveal delay={0.4} y={16}>
-            <div className="mt-10">
-              <HeroPhoneForm />
-            </div>
-          </BlurReveal>
+          {/* Phone Pill "Let Vaani call you" (Hidden unless NEXT_PUBLIC_PHONE_CALLS=true) */}
+          {isPhoneCallsEnabled && (
+            <BlurReveal delay={0.4} y={16}>
+              <div className="mt-10">
+                <HeroPhoneForm />
+              </div>
+            </BlurReveal>
+          )}
 
           {/* Product Preview Browser Card */}
           <BlurReveal delay={0.5} y={24}>
@@ -241,7 +246,7 @@ export default function LandingPage() {
           <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
             <div className="inline-flex items-center gap-2 text-caption font-semibold uppercase tracking-wider text-terracotta">
               <span className="size-2 rounded-full bg-terracotta" />
-              LIVE CONVERSATION
+              AN EXAMPLE CONVERSATION
             </div>
             <h2 className="font-display text-h3 md:text-display-lg text-ink font-medium">
               <BlurWords text="Hear how it sounds. Read how it went." />
@@ -250,9 +255,9 @@ export default function LandingPage() {
               A real-feeling five-minute chat with Maa, shrunk into the four things you actually need to know.
             </p>
             <div className="pt-2">
-              <Button variant="primary" asChild size="default">
-                <a href="#hero">Let Vaani call you</a>
-              </Button>
+              <TalkToVaaniButton variant="primary" size="default">
+                Talk to Vaani
+              </TalkToVaaniButton>
             </div>
           </div>
 

@@ -92,7 +92,7 @@ export function DemoTranscript() {
         <div className="flex items-center gap-3 pb-6 border-b border-cream-200 relative z-10">
           <AvatarOrb initials="MA" size="md" />
           <div>
-            <h4 className="font-display text-h5 text-ink">Conversation with Maa</h4>
+            <h4 className="font-display text-h5 text-ink">An example conversation</h4>
             <p className="text-caption text-ink-soft">Recorded transcript &middot; 8 min</p>
           </div>
         </div>

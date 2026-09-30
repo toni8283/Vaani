@@ -144,6 +144,16 @@ function LiveCallContent() {
     browserCallRef.current = browserCall;
   }, [browserCall]);
 
+  // Auto-open phone mockup when call is ringing in browser mode
+  useEffect(() => {
+    if (
+      status === "ringing" &&
+      (channel === "browser" || process.env.NEXT_PUBLIC_PHONE_CALLS !== "true")
+    ) {
+      setPhoneOpen(true);
+    }
+  }, [status, channel, setPhoneOpen]);
+
   // Keep current time updated every second while call is active or waiting for summary
   useEffect(() => {
     const timer = setInterval(() => {
@@ -359,15 +369,31 @@ function LiveCallContent() {
       {/* 
         2. ERROR BANNER (if any)
       */}
-      {errorMessage && (
+      {(errorMessage || browserCall.errorMessage) && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-xl mt-4 p-3.5 rounded-2xl bg-warm-amber/10 border border-warm-amber/30 text-ink text-small flex items-start gap-2.5 shadow-sm"
         >
           <AlertTriangle className="size-5 text-terracotta shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <p className="font-medium text-ink">{errorMessage}</p>
+          <div className="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <p className="font-medium text-ink">
+              {browserCall.errorMessage || errorMessage}
+            </p>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={async () => {
+                const ctx = getAudioContext();
+                if (ctx && ctx.state === "suspended") {
+                  await ctx.resume().catch(() => {});
+                }
+                await browserCall.retryMic();
+              }}
+              className="shrink-0 text-xs self-start sm:self-auto"
+            >
+              Try again
+            </Button>
           </div>
         </motion.div>
       )}
@@ -445,16 +471,18 @@ function LiveCallContent() {
                   </span>
                 </div>
 
-                {/* Quiet link to take the call in browser */}
-                <div className="pt-2 text-center">
-                  <button
-                    type="button"
-                    onClick={triggerBrowserFallback}
-                    className="text-xs text-ink-soft hover:text-terracotta underline font-medium transition-colors cursor-pointer"
-                  >
-                    Take this call in my browser
-                  </button>
-                </div>
+                {/* Quiet link to take the call in browser (hidden unless phone calls enabled) */}
+                {process.env.NEXT_PUBLIC_PHONE_CALLS === "true" && (
+                  <div className="pt-2 text-center">
+                    <button
+                      type="button"
+                      onClick={triggerBrowserFallback}
+                      className="text-xs text-ink-soft hover:text-terracotta underline font-medium transition-colors cursor-pointer"
+                    >
+                      Take this call in my browser
+                    </button>
+                  </div>
+                )}
               </motion.div>
             )}
 

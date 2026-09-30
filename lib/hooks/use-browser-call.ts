@@ -297,7 +297,9 @@ export function useBrowserCall(
 
       ws.onerror = (err) => {
         console.error("Browser-stream WebSocket error:", err);
-        setErrorMessage("Connection to call server lost. Please try again.");
+        setErrorMessage(
+          "That call didn't go through. Nothing was said, and nobody was bothered. Want to try again?"
+        );
       };
 
       ws.onclose = (event) => {
@@ -310,6 +312,10 @@ export function useBrowserCall(
           setErrorMessage("You do not have permission to access this call.");
         } else if (event.code === 4009) {
           setErrorMessage("This call session is already active in another tab.");
+        } else if (event.code !== 1000) {
+          setErrorMessage(
+            "That call didn't go through. Nothing was said, and nobody was bothered. Want to try again?"
+          );
         }
       };
 
@@ -317,7 +323,9 @@ export function useBrowserCall(
     } catch (wsErr: unknown) {
       console.error("Failed to establish browser call WebSocket:", wsErr);
       setIsConnecting(false);
-      setErrorMessage("Could not reach the voice server. Please try again.");
+      setErrorMessage(
+        "That call didn't go through. Nothing was said, and nobody was bothered. Want to try again?"
+      );
       return false;
     }
   }, [callId, connected, isConnecting, stopActiveAudioPlayback, end]);

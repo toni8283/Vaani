@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { Button } from "@/components/ui/button";
+import { TalkToVaaniButton } from "@/components/call/talk-to-vaani-button";
 import { cn } from "@/lib/utils";
 
 export function MarketingNav() {
@@ -72,16 +73,16 @@ export function MarketingNav() {
             <Button variant="ghost" size="sm" asChild>
               <Link href="/login">Sign in</Link>
             </Button>
-            <Button variant="primary" size="sm" asChild>
-              <Link href="/signup">Set up Vaani</Link>
-            </Button>
+            <TalkToVaaniButton variant="primary" size="sm">
+              Talk to Vaani
+            </TalkToVaaniButton>
           </div>
 
           {/* Mobile Right Controls: Primary CTA + Hamburger */}
           <div className="flex md:hidden items-center gap-2">
-            <Button variant="primary" size="sm" asChild className="h-8 px-3 text-xs">
-              <Link href="/signup">Set up Vaani</Link>
-            </Button>
+            <TalkToVaaniButton variant="primary" size="sm" className="h-8 px-3 text-xs">
+              Talk to Vaani
+            </TalkToVaaniButton>
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -125,11 +126,9 @@ export function MarketingNav() {
                   Sign in
                 </Link>
               </Button>
-              <Button variant="primary" asChild className="w-full">
-                <Link href="/signup" onClick={() => setMobileMenuOpen(false)}>
-                  Set up Vaani
-                </Link>
-              </Button>
+              <TalkToVaaniButton variant="primary" className="w-full">
+                Talk to Vaani
+              </TalkToVaaniButton>
             </div>
           </div>
         </div>
