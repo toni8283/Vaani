@@ -37,6 +37,9 @@ export function useCallStream({ callId, initialCall }: UseCallStreamOptions) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [fallbackToast, setFallbackToast] = useState<string | null>(null);
   const [isEndingOrWriting, setIsEndingOrWriting] = useState(false);
+  const [needsSummary, setNeedsSummary] = useState<boolean>(
+    Boolean(initialCall?.needs_summary)
+  );
 
   const fallbackTriggeredRef = useRef(false);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -205,6 +208,11 @@ export function useCallStream({ callId, initialCall }: UseCallStreamOptions) {
                   triggerBrowserFallback();
                 }
 
+                if (updated.needs_summary !== undefined) {
+                  setNeedsSummary(Boolean(updated.needs_summary));
+                }
+                setCallData((prev: any) => ({ ...prev, ...updated }));
+
                 // Auto-close companion phone when real call ends
                 if (
                   updated.status === "completed" ||
@@ -288,11 +296,86 @@ export function useCallStream({ callId, initialCall }: UseCallStreamOptions) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [callId, triggerBrowserFallback]);
 
+  // 3-second backup polling on calls table when ending, live, or completed without summary
+  useEffect(() => {
+    if (!callId) return;
+    const shouldPoll =
+      isEndingOrWriting ||
+      status === "ending" ||
+      status === "live" ||
+      (status === "completed" && !summary);
+
+    if (!shouldPoll) return;
+
+    const supabase = createClient();
+    const pollInterval = setInterval(async () => {
+      try {
+        const { data, error } = await supabase
+          .from("calls")
+          .select("*, people(*)")
+          .eq("id", callId)
+          .single();
+
+        if (data && !error) {
+          setCallData(data);
+          if (data.status) setStatus(data.status);
+          if (data.channel) setChannel(data.channel);
+          if (data.summary) setSummary(data.summary);
+          if (data.mood_note) setMoodNote(data.mood_note);
+          if (data.needs_summary !== undefined) {
+            setNeedsSummary(Boolean(data.needs_summary));
+          }
+          if (data.duration_seconds) {
+            setDurationSeconds(data.duration_seconds);
+          }
+          if (data.status === "completed") {
+            setPhoneOpen(false);
+          }
+        }
+      } catch (err) {
+        console.warn("Call backup poll error:", err);
+      }
+    }, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [callId, isEndingOrWriting, status, summary]);
+
+  const refetchCall = useCallback(async () => {
+    if (!callId) return;
+    const supabase = createClient();
+    try {
+      const { data, error } = await supabase
+        .from("calls")
+        .select("*, people(*)")
+        .eq("id", callId)
+        .single();
+
+      if (data && !error) {
+        setCallData(data);
+        if (data.status) setStatus(data.status);
+        if (data.channel) setChannel(data.channel);
+        if (data.summary) setSummary(data.summary);
+        if (data.mood_note) setMoodNote(data.mood_note);
+        if (data.needs_summary !== undefined) {
+          setNeedsSummary(Boolean(data.needs_summary));
+        }
+        if (data.duration_seconds) {
+          setDurationSeconds(data.duration_seconds);
+        }
+      }
+    } catch (err) {
+      console.warn("Manual refetch call error:", err);
+    }
+  }, [callId]);
+
   const answerCall = useCallback(() => {
     setStatus("live");
   }, []);
 
   const endCall = useCallback(async () => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+    }
     setStatus("ending");
     setIsEndingOrWriting(true);
     setPhoneOpen(false);
@@ -347,6 +430,9 @@ export function useCallStream({ callId, initialCall }: UseCallStreamOptions) {
     triggerBrowserFallback,
     isEndingOrWriting,
     setIsEndingOrWriting,
+    needsSummary,
+    setNeedsSummary,
+    refetchCall,
     answerCall,
     endCall,
     appendUserTurn,

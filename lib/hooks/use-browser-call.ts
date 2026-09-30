@@ -23,7 +23,14 @@ export interface UseBrowserCallReturn {
   retryMic: () => Promise<boolean>;
 }
 
-export function useBrowserCall(callId: string): UseBrowserCallReturn {
+export interface UseBrowserCallOptions {
+  onCallEnded?: () => void;
+}
+
+export function useBrowserCall(
+  callId: string,
+  options?: UseBrowserCallOptions
+): UseBrowserCallReturn {
   const [connected, setConnected] = useState(false);
   const [muted, setMutedState] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -40,6 +47,11 @@ export function useBrowserCall(callId: string): UseBrowserCallReturn {
   const nextPlayTimeRef = useRef<number>(0);
   const mutedRef = useRef(false);
   mutedRef.current = muted;
+
+  const onCallEndedRef = useRef(options?.onCallEnded);
+  useEffect(() => {
+    onCallEndedRef.current = options?.onCallEnded;
+  }, [options?.onCallEnded]);
 
   const setMuted = useCallback((val: boolean | ((prev: boolean) => boolean)) => {
     setMutedState((prev) => {
@@ -228,6 +240,13 @@ export function useBrowserCall(callId: string): UseBrowserCallReturn {
         try {
           const data = JSON.parse(event.data);
 
+          // Call ended by server/partner
+          if (data.type === "call_ended") {
+            onCallEndedRef.current?.();
+            end();
+            return;
+          }
+
           // Barge-in: agent audio interrupted by user speech
           if (data.type === "clear") {
             stopActiveAudioPlayback();
@@ -301,7 +320,7 @@ export function useBrowserCall(callId: string): UseBrowserCallReturn {
       setErrorMessage("Could not reach the voice server. Please try again.");
       return false;
     }
-  }, [callId, connected, isConnecting, stopActiveAudioPlayback]);
+  }, [callId, connected, isConnecting, stopActiveAudioPlayback, end]);
 
   const retryMic = useCallback(async () => {
     return await start();

@@ -112,6 +112,9 @@ function LiveCallContent() {
     setFallbackToast,
     triggerBrowserFallback,
     isEndingOrWriting,
+    needsSummary,
+    setNeedsSummary,
+    refetchCall,
     answerCall,
     endCall,
   } = useCallStream({
@@ -119,7 +122,109 @@ function LiveCallContent() {
     initialCall: callData,
   });
 
-  const browserCall = useBrowserCall(callId);
+  const [endPressedAt, setEndPressedAt] = useState<number | null>(null);
+  const [waitingSince, setWaitingSince] = useState<number | null>(null);
+  const [currentTime, setCurrentTime] = useState<number>(() => Date.now());
+  const [isRetryingSummarize, setIsRetryingSummarize] = useState(false);
+
+  const browserCallRef = useRef<any>(null);
+
+  const handleEndCall = React.useCallback(() => {
+    browserCallRef.current?.end();
+    endCall();
+    setPhoneOpen(false);
+    setEndPressedAt((prev) => prev ?? Date.now());
+  }, [endCall, setPhoneOpen]);
+
+  const browserCall = useBrowserCall(callId, {
+    onCallEnded: handleEndCall,
+  });
+
+  useEffect(() => {
+    browserCallRef.current = browserCall;
+  }, [browserCall]);
+
+  // Keep current time updated every second while call is active or waiting for summary
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Track start of post-call waiting period (either user pressed End or call ended remotely)
+  useEffect(() => {
+    if (endPressedAt) {
+      if (!waitingSince) setWaitingSince(endPressedAt);
+      return;
+    }
+    if (status === "ending" || status === "completed" || isEndingOrWriting) {
+      if (!waitingSince) {
+        const endedAtMs = callData?.ended_at
+          ? new Date(callData.ended_at).getTime()
+          : Date.now();
+        setWaitingSince(endedAtMs);
+      }
+    }
+  }, [endPressedAt, status, isEndingOrWriting, callData?.ended_at, waitingSince]);
+
+  const effectiveEndAt = endPressedAt || waitingSince;
+  const elapsedSec = effectiveEndAt
+    ? Math.max(0, (currentTime - effectiveEndAt) / 1000)
+    : 0;
+
+  const hasSummary = Boolean(summary);
+  const isCompletedWithSummary = status === "completed" && hasSummary;
+
+  // Recovery message condition:
+  // 1. If call row is still 'live' or 'ending' 20 seconds after End press
+  const isStuckLiveOrEnding =
+    endPressedAt !== null &&
+    (status === "live" || status === "ending") &&
+    currentTime - endPressedAt >= 20000;
+
+  // 2. If status === 'completed' and needs_summary === true
+  const isCompletedNeedsSummary =
+    status === "completed" &&
+    (Boolean(needsSummary) || Boolean(callData?.needs_summary));
+
+  // 3. Or after 45 seconds without a summary
+  const isTimedOutWaitingForSummary =
+    (isEndingOrWriting || status === "ending" || status === "completed") &&
+    !hasSummary &&
+    elapsedSec >= 45;
+
+  const showRecovery =
+    !isCompletedWithSummary &&
+    (isStuckLiveOrEnding || isCompletedNeedsSummary || isTimedOutWaitingForSummary);
+
+  const showWritingUp =
+    !isCompletedWithSummary &&
+    !showRecovery &&
+    (isEndingOrWriting || status === "ending" || status === "completed");
+
+  const handleRetrySummarize = async () => {
+    setIsRetryingSummarize(true);
+    try {
+      const res = await fetch(`/api/calls/${callId}/summarize`, {
+        method: "POST",
+      });
+      if (res.ok) {
+        setNeedsSummary(false);
+        const now = Date.now();
+        setEndPressedAt(now);
+        setWaitingSince(now);
+        await refetchCall();
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        console.warn("Retry summarize response not OK:", errJson);
+      }
+    } catch (err) {
+      console.error("Retry summarize fetch error:", err);
+    } finally {
+      setIsRetryingSummarize(false);
+    }
+  };
 
   // Auto-scroll transcript to bottom
   const transcriptBottomRef = useRef<HTMLDivElement>(null);
@@ -228,15 +333,11 @@ function LiveCallContent() {
             </button>
           )}
 
-          {status !== "completed" && (
+          {status !== "completed" && !isEndingOrWriting && status !== "ending" && !showRecovery && (
             <Button
               variant="quiet"
               size="sm"
-              onClick={() => {
-                browserCall.end();
-                endCall();
-                setPhoneOpen(false);
-              }}
+              onClick={handleEndCall}
               className="text-rust hover:bg-rust/10 hover:text-rust font-medium"
             >
               <PhoneOff className="size-4 mr-1.5" />
@@ -244,7 +345,7 @@ function LiveCallContent() {
             </Button>
           )}
 
-          {status === "completed" && (
+          {(isCompletedWithSummary || showRecovery) && (
             <Link href={`/calls/${callId}`}>
               <Button variant="quiet" size="sm" className="gap-1.5">
                 <span>Call Details</span>
@@ -276,8 +377,9 @@ function LiveCallContent() {
       */}
       <div className="flex-1 flex flex-col items-center justify-center w-full max-w-3xl my-auto py-6">
         {/* Animated Orb */}
+        {/* Animated Orb */}
         <AnimatePresence mode="wait">
-          {status !== "completed" ? (
+          {!showWritingUp && !showRecovery && !isCompletedWithSummary ? (
             <motion.div
               key="active-orb"
               layoutId="vaani-live-orb"
@@ -290,139 +392,125 @@ function LiveCallContent() {
         </AnimatePresence>
 
         {/* Status Headline & Subtitle */}
-        <div className="mt-8 text-center space-y-2 max-w-xl px-4">
-          {status === "connecting" && (
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="space-y-3"
-            >
-              <h1 className="font-display text-3xl md:text-[32px] text-ink font-medium tracking-tight">
-                Getting ready to call {nickname}…
-              </h1>
-              <p className="text-body text-ink-soft leading-relaxed">
-                Vaani has your notes: {noteTopics.join(", ")}, and your personal message.
-              </p>
+        {!showWritingUp && !showRecovery && (
+          <div className="mt-8 text-center space-y-2 max-w-xl px-4">
+            {status === "connecting" && (
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                className="space-y-3"
+              >
+                <h1 className="font-display text-3xl md:text-[32px] text-ink font-medium tracking-tight">
+                  Getting ready to call {nickname}…
+                </h1>
+                <p className="text-body text-ink-soft leading-relaxed">
+                  Vaani has your notes: {noteTopics.join(", ")}, and your personal message.
+                </p>
 
-              <div className="flex items-center justify-center gap-2 pt-2 flex-wrap">
-                {noteTopics.map((topic: string, i: number) => (
-                  <motion.div
-                    key={topic}
-                    initial={{ opacity: 0, y: 14 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 + i * 0.15, duration: 0.5 }}
+                <div className="flex items-center justify-center gap-2 pt-2 flex-wrap">
+                  {noteTopics.map((topic: string, i: number) => (
+                    <motion.div
+                      key={topic}
+                      initial={{ opacity: 0, y: 14 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 + i * 0.15, duration: 0.5 }}
+                    >
+                      <Chip variant="terracotta" size="sm">
+                        {topic}
+                      </Chip>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {status === "ringing" && (
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                className="space-y-2"
+              >
+                <h1 className="font-display text-3xl md:text-[32px] text-ink font-medium tracking-tight">
+                  Ringing {nickname}…
+                </h1>
+                <p className="text-body text-ink-soft leading-relaxed">
+                  Vaani will say hello and explain who it is.
+                </p>
+                <div className="flex items-center justify-center gap-2 text-small text-ink-faint pt-1">
+                  <span className="size-2 rounded-full bg-honey animate-ping" />
+                  <span className="font-mono tabular-nums">
+                    0:0{Math.min(9, durationSeconds + 4)}
+                  </span>
+                </div>
+
+                {/* Quiet link to take the call in browser */}
+                <div className="pt-2 text-center">
+                  <button
+                    type="button"
+                    onClick={triggerBrowserFallback}
+                    className="text-xs text-ink-soft hover:text-terracotta underline font-medium transition-colors cursor-pointer"
                   >
-                    <Chip variant="terracotta" size="sm">
-                      {topic}
-                    </Chip>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          )}
+                    Take this call in my browser
+                  </button>
+                </div>
+              </motion.div>
+            )}
 
-          {status === "ringing" && (
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="space-y-2"
-            >
-              <h1 className="font-display text-3xl md:text-[32px] text-ink font-medium tracking-tight">
-                Ringing {nickname}…
-              </h1>
-              <p className="text-body text-ink-soft leading-relaxed">
-                Vaani will say hello and explain who it is.
-              </p>
-              <div className="flex items-center justify-center gap-2 text-small text-ink-faint pt-1">
-                <span className="size-2 rounded-full bg-honey animate-ping" />
-                <span className="font-mono tabular-nums">
-                  0:0{Math.min(9, durationSeconds + 4)}
-                </span>
-              </div>
+            {status === "live" && (
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                className="space-y-2"
+              >
+                <h1 className="font-display text-3xl md:text-[32px] text-ink font-medium tracking-tight">
+                  Talking with {nickname}
+                </h1>
+                <p className="text-body text-ink-soft flex items-center justify-center gap-2">
+                  {orbState === "speaking" && (
+                    <span className="text-terracotta font-medium animate-pulse">
+                      ● Vaani is speaking
+                    </span>
+                  )}
+                  {orbState === "listening" && (
+                    <span className="text-sage font-medium animate-pulse">
+                      ● {nickname} is speaking
+                    </span>
+                  )}
+                  {orbState === "thinking" && (
+                    <span className="text-amber-glow font-medium">
+                      Vaani is thinking…
+                    </span>
+                  )}
+                  {orbState === "idle" && <span>Listening…</span>}
+                </p>
+              </motion.div>
+            )}
 
-              {/* Quiet link to take the call in browser */}
-              <div className="pt-2 text-center">
-                <button
-                  type="button"
-                  onClick={triggerBrowserFallback}
-                  className="text-xs text-ink-soft hover:text-terracotta underline font-medium transition-colors cursor-pointer"
-                >
-                  Take this call in my browser
-                </button>
-              </div>
-            </motion.div>
-          )}
-
-          {status === "live" && (
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="space-y-2"
-            >
-              <h1 className="font-display text-3xl md:text-[32px] text-ink font-medium tracking-tight">
-                Talking with {nickname}
-              </h1>
-              <p className="text-body text-ink-soft flex items-center justify-center gap-2">
-                {orbState === "speaking" && (
-                  <span className="text-terracotta font-medium animate-pulse">
-                    ● Vaani is speaking
-                  </span>
-                )}
-                {orbState === "listening" && (
-                  <span className="text-sage font-medium animate-pulse">
-                    ● {nickname} is speaking
-                  </span>
-                )}
-                {orbState === "thinking" && (
-                  <span className="text-amber-glow font-medium">
-                    Vaani is thinking…
-                  </span>
-                )}
-                {orbState === "idle" && <span>Listening…</span>}
-              </p>
-            </motion.div>
-          )}
-
-          {status === "ending" && (
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="space-y-2"
-            >
-              <h1 className="font-display text-3xl md:text-[32px] text-ink font-medium tracking-tight">
-                Saying goodbye…
-              </h1>
-              <p className="text-body text-ink-soft italic">
-                &ldquo;{currentTurn?.text || `Take care, ${nickname}.`}&rdquo;
-              </p>
-            </motion.div>
-          )}
-
-          {status === "completed" && summary && (
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7 }}
-              className="space-y-1 mb-4"
-            >
-              <h1 className="font-display text-3xl md:text-[36px] text-ink font-medium tracking-tight">
-                Here&apos;s how it went.
-              </h1>
-              <p className="text-body text-ink-soft">
-                A few things you&apos;ll want to know.
-              </p>
-            </motion.div>
-          )}
-        </div>
+            {isCompletedWithSummary && (
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7 }}
+                className="space-y-1 mb-4"
+              >
+                <h1 className="font-display text-3xl md:text-[36px] text-ink font-medium tracking-tight">
+                  Here&apos;s how it went.
+                </h1>
+                <p className="text-body text-ink-soft">
+                  A few things you&apos;ll want to know.
+                </p>
+              </motion.div>
+            )}
+          </div>
+        )}
 
         {/* 
           4. BOTTOM HALF: MEMORY CHIP & LIVE TRANSCRIPT PANEL (when active)
         */}
-        {status !== "completed" && (
+        {!showWritingUp && !showRecovery && !isCompletedWithSummary && (
           <div className="w-full max-w-xl mt-6 space-y-3">
             {/* Memory Chip Popup */}
             <AnimatePresence>
@@ -506,9 +594,9 @@ function LiveCallContent() {
         )}
 
         {/* 
-          5. POST-CALL LOADING: "Writing up how it went..." until summary exists
+          5. POST-CALL LOADING: "Writing up how it went..." until summary exists or recovery triggers
         */}
-        {(status === "completed" || isEndingOrWriting) && !summary && (
+        {showWritingUp && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -525,9 +613,54 @@ function LiveCallContent() {
         )}
 
         {/* 
+          5.5. RECOVERY STATE: Calm message when summary fails or is delayed >45s or call stuck >20s
+        */}
+        {showRecovery && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="w-full max-w-md py-12 flex flex-col items-center justify-center text-center space-y-4"
+          >
+            <div className="size-12 rounded-full bg-cream-100 border border-cream-300 text-terracotta flex items-center justify-center shadow-xs">
+              <BookHeart className="size-6" />
+            </div>
+            <div className="space-y-1.5">
+              <h2 className="font-display text-2xl text-ink font-medium tracking-tight">
+                We couldn&apos;t write the summary just now.
+              </h2>
+              <p className="text-body text-ink-soft">
+                Your conversation is saved.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+              <Button
+                variant="primary"
+                onClick={handleRetrySummarize}
+                disabled={isRetryingSummarize}
+                className="gap-2"
+              >
+                {isRetryingSummarize ? (
+                  <>
+                    <span className="size-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                    <span>Trying again…</span>
+                  </>
+                ) : (
+                  <span>Try again</span>
+                )}
+              </Button>
+              <Link href={`/calls/${callId}`}>
+                <Button variant="ghost" className="text-ink-soft hover:text-ink">
+                  See the transcript
+                </Button>
+              </Link>
+            </div>
+          </motion.div>
+        )}
+
+        {/* 
           6. SUMMARY REVEAL CARD (when status === "completed" and summary exists)
         */}
-        {status === "completed" && summary && (
+        {isCompletedWithSummary && summary && (
           <motion.div
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
@@ -717,11 +850,7 @@ function LiveCallContent() {
           answerCall();
           await browserCall.start();
         }}
-        onEndCall={() => {
-          browserCall.end();
-          endCall();
-          setPhoneOpen(false);
-        }}
+        onEndCall={handleEndCall}
         notes={callData?.notes}
         browserCall={browserCall}
       />
