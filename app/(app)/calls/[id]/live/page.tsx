@@ -149,14 +149,17 @@ function LiveCallContent() {
     transcriptBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [transcript]);
 
-  // Toast for summary completion
+  // Auto-close companion phone and show toast when call completes
   useEffect(() => {
     if (status === "completed") {
+      setPhoneOpen(false);
       setToastMessage("Summary sent to your phone.");
       const t = setTimeout(() => setToastMessage(null), 6000);
       return () => clearTimeout(t);
+    } else if (status === "ending" || status === "no_answer") {
+      setPhoneOpen(false);
     }
-  }, [status]);
+  }, [status, setPhoneOpen]);
 
   const formatTimer = (totalSeconds: number) => {
     const mins = Math.floor(totalSeconds / 60)

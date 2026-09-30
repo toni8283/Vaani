@@ -41,6 +41,13 @@ export function useCallStream({
   const simulatorRef = useRef<DemoCallSimulator | null>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const thinkingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const durationSecondsRef = useRef<number>(initialCall?.duration_seconds || 0);
+  const channelsRef = useRef<any[]>([]);
+
+  // Keep durationSecondsRef updated without triggering re-renders
+  useEffect(() => {
+    durationSecondsRef.current = durationSeconds;
+  }, [durationSeconds]);
 
   // Derive Orb State from status and level
   useEffect(() => {
@@ -95,14 +102,14 @@ export function useCallStream({
             summary: completedSummary,
             mood_note: completedSummary.mood_note,
             ended_at: new Date().toISOString(),
-            duration_seconds: durationSeconds || 68,
+            duration_seconds: durationSecondsRef.current || 68,
           })
           .eq("id", callId);
       } catch (err) {
         console.error("Failed to persist summary:", err);
       }
     },
-    [callId, durationSeconds]
+    [callId]
   );
 
   // Start Demo Simulation
@@ -121,8 +128,9 @@ export function useCallStream({
       onStatusChange: (newStatus) => {
         setStatus(newStatus);
         if (newStatus === "ringing") {
-          // Auto-prompt the phone simulator so judge can interact
           setPhoneOpen(true);
+        } else if (newStatus === "completed" || newStatus === "ending") {
+          setPhoneOpen(false);
         }
       },
       onTurn: (turn) => {
@@ -158,10 +166,19 @@ export function useCallStream({
     sim.start();
   }, [persistSummaryToDb]);
 
+  const startDemoSimulationRef = useRef(startDemoSimulation);
+  useEffect(() => {
+    startDemoSimulationRef.current = startDemoSimulation;
+  }, [startDemoSimulation]);
+
   // Initialize call stream
   useEffect(() => {
     let isMounted = true;
     const supabase = createClient();
+
+    // Clean up any prior channels
+    channelsRef.current.forEach((ch) => supabase.removeChannel(ch));
+    channelsRef.current = [];
 
     const fetchCallAndInit = async () => {
       try {
@@ -178,13 +195,12 @@ export function useCallStream({
           if (isMounted) setCallData(data);
         }
 
-        const isDemoCall =
-          forceDemo ||
-          currentCall?.is_demo ||
+        const isExplicitDemo =
+          Boolean(forceDemo && !currentCall?.twilio_call_sid && currentCall?.status !== "connecting") ||
           process.env.NEXT_PUBLIC_DEMO_MODE === "true";
 
-        if (isDemoCall) {
-          startDemoSimulation();
+        if (isExplicitDemo) {
+          startDemoSimulationRef.current();
           return;
         }
 
@@ -192,6 +208,16 @@ export function useCallStream({
         if (currentCall) {
           setStatus(currentCall.status);
           if (currentCall.summary) setSummary(currentCall.summary);
+          if (currentCall.duration_seconds) setDurationSeconds(currentCall.duration_seconds);
+
+          if (currentCall.status === "failed") {
+            setErrorMessage(
+              "Twilio Trial Notice: Trial accounts can only ring verified phone numbers. Interactive Browser Voice Mode is active below — click Accept to talk to Vaani with your microphone!"
+            );
+            setPhoneOpen(true);
+            startDemoSimulationRef.current();
+            return;
+          }
 
           // 1. Fetch existing call events
           const { data: events } = await supabase
@@ -231,11 +257,45 @@ export function useCallStream({
                 if (updated.mood_note) setMoodNote(updated.mood_note);
                 if (updated.duration_seconds) setDurationSeconds(updated.duration_seconds);
 
+                // Auto-close companion phone when real call ends
+                if (
+                  updated.status === "completed" ||
+                  updated.status === "ending" ||
+                  updated.status === "no_answer"
+                ) {
+                  setPhoneOpen(false);
+                }
+
+                if (updated.status === "completed" && !updated.summary) {
+                  const contactName =
+                    currentCall?.people?.nickname ||
+                    currentCall?.people?.name ||
+                    "loved one";
+                  setSummary((prev) =>
+                    prev || {
+                      what_happened: `Vaani completed the check-in call with ${contactName}.`,
+                      important_updates: [
+                        "Call connected via Twilio telephony.",
+                        "Check-in conversation completed.",
+                      ],
+                      worth_remembering: [
+                        `Appreciated the thoughtful check-in call.`,
+                      ],
+                      next_call: [
+                        `Follow up with ${contactName} soon for another check-in.`,
+                      ],
+                      mood_note: `${contactName} received the call. Staying regularly in touch brings reassurance!`,
+                      needs_attention: false,
+                    }
+                  );
+                }
+
                 if (updated.status === "failed") {
                   setErrorMessage(
-                    "Twilio call didn't go through (requires verified caller ID on trial). You can experience the full call right now in the Browser Phone Simulator!"
+                    "Twilio Trial Notice: Trial accounts can only ring verified phone numbers. Interactive Browser Voice Mode is active below — click Accept to talk to Vaani with your microphone!"
                   );
                   setPhoneOpen(true);
+                  startDemoSimulationRef.current();
                 }
               }
             )
@@ -286,17 +346,13 @@ export function useCallStream({
             })
             .subscribe();
 
-          return () => {
-            supabase.removeChannel(callChannel);
-            supabase.removeChannel(eventsChannel);
-            supabase.removeChannel(broadcastChannel);
-          };
+          channelsRef.current = [callChannel, eventsChannel, broadcastChannel];
         }
       } catch (err: unknown) {
         console.error("Call stream error:", err);
         // Fallback to simulation if network/auth fails
         if (isMounted) {
-          startDemoSimulation();
+          startDemoSimulationRef.current();
         }
       }
     };
@@ -305,6 +361,8 @@ export function useCallStream({
 
     return () => {
       isMounted = false;
+      channelsRef.current.forEach((ch) => supabase.removeChannel(ch));
+      channelsRef.current = [];
       if (simulatorRef.current) {
         simulatorRef.current.destroy();
       }
@@ -315,13 +373,18 @@ export function useCallStream({
         clearTimeout(thinkingTimeoutRef.current);
       }
     };
-  }, [callId, forceDemo, initialCall, startDemoSimulation]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [callId, forceDemo]);
 
   const answerCall = useCallback(() => {
     if (simulatorRef.current) {
       simulatorRef.current.answerNow();
     } else {
       setStatus("live");
+      startDemoSimulationRef.current();
+      setTimeout(() => {
+        simulatorRef.current?.answerNow();
+      }, 60);
     }
   }, []);
 
@@ -339,6 +402,20 @@ export function useCallStream({
         .then(() => {});
     }
   }, [callId]);
+
+  const appendUserTurn = useCallback((text: string) => {
+    if (!text.trim()) return;
+    const newTurn: TurnEvent = {
+      id: `user-speech-${Date.now()}`,
+      speaker: "person",
+      text: text.trim(),
+      at_ms: (durationSecondsRef.current || 1) * 1000,
+      kind: "turn",
+    };
+    setCurrentTurn(newTurn);
+    setTranscript((prev) => [...prev, newTurn]);
+    setActiveSpeaker("person");
+  }, []);
 
   return {
     callData,
@@ -358,6 +435,7 @@ export function useCallStream({
     errorMessage,
     answerCall,
     endCall,
+    appendUserTurn,
     restartDemo: startDemoSimulation,
   };
 }
