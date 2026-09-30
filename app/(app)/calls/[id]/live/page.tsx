@@ -29,6 +29,7 @@ import { PhoneMockup } from "@/components/call/phone-mockup";
 import { useCallStream } from "@/lib/hooks/use-call-stream";
 import { useBrowserCall } from "@/lib/hooks/use-browser-call";
 import { createClient } from "@/lib/supabase/client";
+import { getAudioContext } from "@/lib/audio";
 
 export default function LiveCallPage() {
   return (
@@ -709,6 +710,10 @@ function LiveCallContent() {
         durationSeconds={durationSeconds}
         currentTurn={currentTurn}
         onAnswerCall={async () => {
+          const ctx = getAudioContext();
+          if (ctx && ctx.state === "suspended") {
+            await ctx.resume().catch(() => {});
+          }
           answerCall();
           await browserCall.start();
         }}
@@ -723,3 +728,4 @@ function LiveCallContent() {
     </div>
   );
 }
+

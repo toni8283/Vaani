@@ -1,7 +1,12 @@
-// Web Audio helper for keypad tones, ringtones, and call sound effects
+// Web Audio helper for keypad tones, ringtones, sound effects, and audio PCM conversion
 
 let audioCtx: AudioContext | null = null;
 
+/**
+ * Lazy client-only AudioContext singleton.
+ * Returns null during SSR or if Web Audio is unsupported.
+ * Automatically resumes the AudioContext if it is suspended.
+ */
 export function getAudioContext(): AudioContext | null {
   if (typeof window === "undefined") return null;
   if (!audioCtx) {

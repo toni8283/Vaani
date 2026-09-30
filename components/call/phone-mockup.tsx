@@ -23,7 +23,13 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { AvatarOrb } from "@/components/ui/avatar-orb";
-import { playRingtone, playDtmfTone, playPickupSound, playHangupSound } from "@/lib/audio";
+import {
+  getAudioContext,
+  playRingtone,
+  playDtmfTone,
+  playPickupSound,
+  playHangupSound,
+} from "@/lib/audio";
 import type { TurnEvent, CallStatus } from "@/lib/types/call";
 
 interface PhoneMockupProps {
@@ -144,6 +150,11 @@ export function PhoneMockup({
     if (stopRingtoneRef.current) {
       stopRingtoneRef.current();
       stopRingtoneRef.current = null;
+    }
+    // User gesture: Ensure AudioContext is created and resumed synchronously
+    const ctx = getAudioContext();
+    if (ctx && ctx.state === "suspended") {
+      ctx.resume().catch(() => {});
     }
     playPickupSound();
     onAnswerCall?.();
