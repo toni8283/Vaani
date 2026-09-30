@@ -1,49 +1,117 @@
-# VAANI — AI Voice Agent Web App
+# Vaani
 
-Vaani phones the people you love, has a real conversation, and tells you how they're doing — so a busy week never turns into a quiet month. Always honest about being an AI. Always on your behalf.
+**Vaani is an AI voice companion that calls the people you love on your behalf — catching up with elderly relatives, passing on a message, or just checking in.** It listens, understands, and gives you a warm summary of how the conversation went, so you stay close even when life is busy.
+
+> Built for the [lablab.ai × AssemblyAI hackathon](https://lablab.ai).
 
 ---
 
-## Supabase Database Setup Instructions
+## How it works
 
-Follow these exact steps to run the SQL migration in your Supabase project:
+1. **Create a person** — add a name, relationship and a few notes (optional phone number).
+2. **Start a call** — describe what you'd like Vaani to say or ask.
+3. **Accept the call** in your browser — your mic streams audio to the call server, which bridges it to AssemblyAI's Voice Agent API. Vaani speaks and listens in real time.
+4. **End the call** — a written summary appears within seconds; the transcript is saved to your dashboard.
 
-1. **Log in to Supabase**:
-   Navigate to [https://supabase.com/dashboard](https://supabase.com/dashboard) and open your project.
+---
 
-2. **Open the SQL Editor**:
-   In the left sidebar menu, click on the **SQL Editor** tab (the `>_` icon).
+## Architecture
 
-3. **Create a New Query**:
-   Click **+ New Query** at the top of the SQL Editor.
+```
+Browser (Next.js 14)
+  │  getUserMedia → WebSocket (useBrowserCall)
+  │
+  ▼
+vaani-call-server  (Express + ws)
+  │  /browser-stream  — bidirectional 24 kHz PCM16 WebSocket
+  │  /calls/:id/*     — protected REST routes (x-api-secret)
+  │
+  ▼
+AssemblyAI Voice Agent API
+  (real-time STT + LLM + TTS in one WebSocket session)
+  │
+  ▼
+Supabase  (Postgres + Realtime + Auth)
+  Stores: users, people, calls, transcripts, summaries
+  Realtime subscription drives the live-call page and summary state.
+```
 
-4. **Paste the Migration Script**:
-   Open [`supabase/migrations/001_init.sql`](./supabase/migrations/001_init.sql) in this repository, copy the entire contents, and paste them into the SQL Editor input area.
-   Next, run [`supabase/migrations/002_demo.sql`](./supabase/migrations/002_demo.sql) to add the `is_demo` column to `calls`.
+The **Next.js app** (this repo) handles auth, the wizard UI, the live-call page, and server-side API routes that proxy protected actions to the call server with a shared secret (`CALL_SERVER_SECRET`) that never touches the browser.
 
-5. **Run the Script**:
-   Click the green **Run** button (or press `Cmd + Enter` / `Ctrl + Enter`).
-   You should see `Success. No rows returned` in the output pane.
+The **call server** lives in a companion repo (see below).
 
-6. **Verify Tables and Auth Settings**:
-   - Go to **Table Editor** in the left sidebar and confirm that all 5 tables are created:
-     - `profiles` (with `onboarded` column)
-     - `people`
-     - `calls` (with `is_demo` column)
-     - `call_events`
-     - `memories`
-   - Go to **Authentication -> Providers -> Email** and ensure Email provider is enabled.
-   - Go to **Authentication -> Providers -> Anonymous Sign-Ins** and toggle **Enable Anonymous Sign-Ins** to ON (required for guest mode).
+---
 
-7. **Configure Local Environment**:
-   Copy `.env.example` to `.env.local`:
-   ```bash
-   cp .env.example .env.local
-   ```
-   Fill in your `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` from **Project Settings -> API**.
+## Run locally
 
-8. **Seed Sample Data (Optional)**:
-   Once signed up, you can seed realistic calls, memories, and schedule for your account:
-   ```bash
-   npm run seed -- your-email@example.com
-   ```
+### Prerequisites
+
+- Node.js 18+
+- A [Supabase](https://supabase.com) project
+- The [vaani-call-server](https://github.com/toni8283/vaani-call-server) running (see its README)
+
+### 1 — Clone and install
+
+```bash
+git clone https://github.com/toni8283/Vaani.git
+cd Vaani
+npm install
+```
+
+### 2 — Environment variables
+
+```bash
+cp .env.example .env.local
+```
+
+Then fill in `.env.local`:
+
+| Variable | Description |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon/public key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service-role key (**server-only — never expose to browser**) |
+| `CALL_SERVER_URL` | HTTP URL of the call server, e.g. `http://localhost:8080` |
+| `CALL_SERVER_SECRET` | Shared secret matching `CALL_SERVER_SECRET` in the call server |
+| `NEXT_PUBLIC_CALL_SERVER_WS_URL` | WebSocket URL of the call server, e.g. `ws://localhost:8080` |
+| `NEXT_PUBLIC_PHONE_CALLS` | Set `"true"` to enable the Twilio phone path (see Scope below) |
+
+### 3 — Database migrations
+
+Run the SQL files in `supabase/migrations/` in order against your Supabase project (via the Supabase SQL editor or `supabase db push`).
+
+### 4 — Start
+
+```bash
+# Terminal 1 — call server
+cd ../vaani-call-server && npm run dev
+
+# Terminal 2 — Next.js app
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+---
+
+## Scope note
+
+**The browser call is the demo path.** When `NEXT_PUBLIC_PHONE_CALLS` is not set (default), the app places calls entirely through the browser: your microphone streams to the call server, and you hear Vaani's voice through your speakers. No phone number required.
+
+**The Twilio phone path** (Vaani calls a real phone number) is behind `NEXT_PUBLIC_PHONE_CALLS=true`. It is implemented but **not demo-ready** — it requires a Twilio account, a purchased number, and a publicly reachable call-server URL (e.g. via ngrok or a deployed instance). Do not enable it for a demo unless you have all three set up and tested.
+
+---
+
+## Companion repo
+
+The call server that bridges the browser to AssemblyAI is in a separate repo:
+**[vaani-call-server](https://github.com/toni8283/vaani-call-server)** _(companion local repo — not yet published)_
+
+---
+
+## Tech stack
+
+- [Next.js 14](https://nextjs.org) App Router · TypeScript · Tailwind CSS · shadcn/ui · Framer Motion
+- [Supabase](https://supabase.com) — auth, Postgres, Realtime
+- [AssemblyAI Voice Agent API](https://www.assemblyai.com) — real-time speech-to-text, LLM, and text-to-speech
+- Twilio (optional, behind `NEXT_PUBLIC_PHONE_CALLS`)
