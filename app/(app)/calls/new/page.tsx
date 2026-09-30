@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { validatePhoneNumber } from "@/lib/phone";
-import { audio } from "@/lib/assets";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,10 +22,12 @@ import {
   ArrowLeft,
   PhoneCall,
   Sparkles,
-  Play,
   Clock,
   ShieldCheck,
 } from "lucide-react";
+
+import { VoicePicker } from "@/components/app/voice-picker";
+import { DEFAULT_FEMALE_VOICE } from "@/lib/voices";
 
 const RELATIONSHIPS = [
   "Mom",
@@ -36,12 +37,6 @@ const RELATIONSHIPS = [
   "Partner",
   "Friend",
   "Someone else",
-];
-
-const VOICES = [
-  { id: "claire", name: "Claire", desc: "calm and clear", toneDefault: "Warm" },
-  { id: "ivy", name: "Ivy", desc: "bright and friendly", toneDefault: "Cheerful" },
-  { id: "dawn", name: "Dawn", desc: "soft and unhurried", toneDefault: "Gentle" },
 ];
 
 const TONES = ["Warm", "Cheerful", "Gentle", "Playful"];
@@ -84,7 +79,7 @@ function CreateCallWizardContent() {
   const [phone, setPhone] = useState("");
 
   // Step 2: Voice
-  const [voice, setVoice] = useState("claire");
+  const [voice, setVoice] = useState(DEFAULT_FEMALE_VOICE.id);
   const [tone, setTone] = useState("Warm");
   const [language, setLanguage] = useState("en");
 
@@ -643,56 +638,16 @@ function CreateCallWizardContent() {
                 </p>
               </div>
 
-              {/* 3 Voice Cards */}
+              {/* Voice Cards */}
               <div className="space-y-3">
                 <label className="text-small font-medium text-ink">
                   Voice
                 </label>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  {VOICES.map((v) => {
-                    const isSelected = voice === v.id;
-                    const hasSampleAudio = audio[v.id as keyof typeof audio];
-
-                    return (
-                      <div
-                        key={v.id}
-                        onClick={() => {
-                          setVoice(v.id);
-                          setTone(v.toneDefault);
-                        }}
-                        className={`p-4 rounded-2xl border cursor-pointer transition-all duration-150 flex flex-col justify-between ${
-                          isSelected
-                            ? "bg-terracotta-subtle/50 border-terracotta shadow-xs"
-                            : "bg-cream-100/50 border-cream-200 hover:bg-cream-100"
-                        }`}
-                      >
-                        <div className="space-y-1">
-                          <div className="font-display text-h5 font-semibold text-ink">
-                            {v.name}
-                          </div>
-                          <div className="text-xs text-ink-soft">
-                            {v.desc}
-                          </div>
-                        </div>
-
-                        {/* Hear a sample: only show if audio sample flag is true */}
-                        {hasSampleAudio && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              // Play audio sample
-                            }}
-                            className="inline-flex items-center gap-1.5 text-xs text-terracotta font-medium mt-4 pt-2 border-t border-cream-200/60"
-                          >
-                            <Play className="size-3 fill-terracotta" />
-                            <span>Hear a sample</span>
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                <VoicePicker
+                  value={voice}
+                  onChange={setVoice}
+                  maxHeight="max-h-[380px]"
+                />
               </div>
 
               {/* Tone Chips */}

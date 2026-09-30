@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { PersonDialog, type PersonRecord } from "@/components/app/person-dialog";
 import { maskPhoneNumber } from "@/lib/phone";
+import { getVoiceById } from "@/lib/voices";
 import {
   Search,
   Plus,
@@ -405,16 +406,13 @@ function PeopleContent() {
                     </div>
 
                     <div className="space-y-2 text-small">
-                      <div className="flex justify-between">
+                      <div className="flex justify-between items-center">
                         <span className="text-ink-soft">Voice:</span>
-                        <span className="font-medium text-ink capitalize">
-                          {currentPerson.voice || "Claire"} (
-                          {currentPerson.voice === "ivy"
-                            ? "bright & friendly"
-                            : currentPerson.voice === "dawn"
-                            ? "soft & unhurried"
-                            : "calm & clear"}
-                          )
+                        <span className="font-medium text-ink">
+                          {getVoiceById(currentPerson.voice).displayName}{" "}
+                          <span className="text-ink-faint font-normal text-xs">
+                            · {getVoiceById(currentPerson.voice).accent}
+                          </span>
                         </span>
                       </div>
                       <div className="flex justify-between">

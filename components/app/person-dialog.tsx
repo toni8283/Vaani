@@ -16,6 +16,9 @@ import { Chip } from "@/components/ui/chip";
 import { validatePhoneNumber } from "@/lib/phone";
 import { createClient } from "@/lib/supabase/client";
 
+import { VoicePicker } from "@/components/app/voice-picker";
+import { DEFAULT_FEMALE_VOICE } from "@/lib/voices";
+
 export interface PersonRecord {
   id: string;
   name: string;
@@ -46,12 +49,6 @@ const RELATIONSHIPS = [
   "Someone else",
 ];
 
-const VOICES = [
-  { id: "claire", label: "Claire · calm and clear" },
-  { id: "ivy", label: "Ivy · bright and friendly" },
-  { id: "dawn", label: "Dawn · soft and unhurried" },
-];
-
 const TONES = ["Warm", "Cheerful", "Gentle", "Playful"];
 
 const TINTS = ["#F2A65A", "#C4622D", "#5E8C61", "#D9A441", "#8F3F17"];
@@ -66,7 +63,7 @@ export function PersonDialog({
   const [nickname, setNickname] = useState("");
   const [relationship, setRelationship] = useState("Mom");
   const [phone, setPhone] = useState("");
-  const [voice, setVoice] = useState("claire");
+  const [voice, setVoice] = useState(DEFAULT_FEMALE_VOICE.id);
   const [tone, setTone] = useState("Warm");
   const [language, setLanguage] = useState("en");
   const [tint, setTint] = useState("#F2A65A");
@@ -79,7 +76,7 @@ export function PersonDialog({
       setNickname(person.nickname || "");
       setRelationship(person.relationship || "Mom");
       setPhone(person.phone_e164 || "");
-      setVoice(person.voice || "claire");
+      setVoice(person.voice || DEFAULT_FEMALE_VOICE.id);
       setTone(person.tone || "Warm");
       setLanguage(person.language || "en");
       setTint(person.tint || "#F2A65A");
@@ -88,7 +85,7 @@ export function PersonDialog({
       setNickname("");
       setRelationship("Mom");
       setPhone("");
-      setVoice("claire");
+      setVoice(DEFAULT_FEMALE_VOICE.id);
       setTone("Warm");
       setLanguage("en");
       setTint(TINTS[Math.floor(Math.random() * TINTS.length)]);
@@ -178,7 +175,7 @@ export function PersonDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {person ? `Edit ${person.name}` : "Add someone you love"}
@@ -267,25 +264,11 @@ export function PersonDialog({
             <label className="text-small font-medium text-ink">
               Voice
             </label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              {VOICES.map((v) => (
-                <button
-                  type="button"
-                  key={v.id}
-                  onClick={() => setVoice(v.id)}
-                  className={`p-3 rounded-xl border text-left transition-all text-small ${
-                    voice === v.id
-                      ? "border-terracotta bg-terracotta-subtle/50 text-ink font-medium shadow-sm"
-                      : "border-cream-200 bg-cream-100/50 text-ink-soft hover:bg-cream-100"
-                  }`}
-                >
-                  <div className="font-semibold capitalize text-ink">{v.id}</div>
-                  <div className="text-xs text-ink-faint mt-0.5">
-                    {v.id === "claire" ? "calm & clear" : v.id === "ivy" ? "bright & friendly" : "soft & unhurried"}
-                  </div>
-                </button>
-              ))}
-            </div>
+            <VoicePicker
+              value={voice}
+              onChange={setVoice}
+              maxHeight="max-h-[260px]"
+            />
           </div>
 
           {/* Tone */}
