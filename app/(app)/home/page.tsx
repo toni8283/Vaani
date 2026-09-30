@@ -22,6 +22,7 @@ import {
   Sparkles,
   Heart,
   Bookmark,
+  BookHeart,
   Plus,
   Clock,
   ChevronRight,
@@ -172,6 +173,88 @@ export default function HomePage() {
     loadData();
   }, []);
 
+  // Compute active call in progress
+  const activeCall = useMemo(() => {
+    return calls.find((c) =>
+      ["connecting", "ringing", "live"].includes(c.status)
+    );
+  }, [calls]);
+
+  const [activeEvents, setActiveEvents] = useState<any[]>([]);
+  const [activeMemory, setActiveMemory] = useState<string | null>(null);
+
+  // Realtime subscription for active call transcript & memory
+  useEffect(() => {
+    if (!activeCall) {
+      setActiveEvents([]);
+      setActiveMemory(null);
+      return;
+    }
+
+    const supabase = createClient();
+
+    // 1. Load initial events
+    supabase
+      .from("call_events")
+      .select("*")
+      .eq("call_id", activeCall.id)
+      .order("created_at", { ascending: true })
+      .then(({ data }) => {
+        if (data) {
+          setActiveEvents(data);
+          const memory = data.filter((e) => e.kind === "memory_used").pop();
+          if (memory) setActiveMemory(memory.text);
+        }
+      });
+
+    // 2. Realtime inserts for call_events
+    const eventsCh = supabase
+      .channel(`home_active_call_events_${activeCall.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "call_events",
+          filter: `call_id=eq.${activeCall.id}`,
+        },
+        (payload) => {
+          const newEv = payload.new as any;
+          setActiveEvents((prev) => [...prev, newEv]);
+          if (newEv.kind === "memory_used") {
+            setActiveMemory(newEv.text);
+          }
+        }
+      )
+      .subscribe();
+
+    // 3. Realtime updates for call row
+    const callCh = supabase
+      .channel(`home_active_call_status_${activeCall.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "calls",
+          filter: `id=eq.${activeCall.id}`,
+        },
+        (payload) => {
+          const updated = payload.new as any;
+          setCalls((prev) =>
+            prev.map((c) => (c.id === updated.id ? { ...c, ...updated } : c))
+          );
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(eventsCh);
+      supabase.removeChannel(callCh);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCall?.id]);
+
   // Compute next up call
   const nextScheduledCall = useMemo(() => {
     const scheduled = calls.filter(
@@ -244,6 +327,86 @@ export default function HomePage() {
           Here&apos;s who you&apos;ve been thinking about.
         </p>
       </div>
+
+      {/* CALL IN PROGRESS PANEL */}
+      {activeCall && (
+        <BlurReveal delay={0.05}>
+          <div className="relative overflow-hidden rounded-[28px] p-6 md:p-7 border border-warm-amber/40 bg-gradient-to-r from-cream-50 via-cream-100 to-amber-soft/20 shadow-md space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="relative">
+                  <AvatarOrb
+                    name={
+                      activeCall.people?.nickname ||
+                      activeCall.people?.name ||
+                      "Loved one"
+                    }
+                    tint={activeCall.people?.tint || "#F2A65A"}
+                    size="md"
+                  />
+                  <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full bg-sage ring-2 ring-cream-50 animate-pulse" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-terracotta uppercase tracking-wider">
+                      Call in progress
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-terracotta/10 text-terracotta">
+                      {activeCall.status === "live"
+                        ? "Live conversation"
+                        : activeCall.status === "ringing"
+                        ? "Ringing…"
+                        : "Connecting…"}
+                    </span>
+                  </div>
+                  <h3 className="font-display text-h4 text-ink font-medium mt-0.5">
+                    Checking in with {activeCall.people?.nickname || activeCall.people?.name || "loved one"}
+                  </h3>
+                </div>
+              </div>
+
+              <Link href={`/calls/${activeCall.id}/live`}>
+                <Button variant="primary" size="default" className="gap-2 shadow-xs">
+                  <PhoneCall className="size-4" />
+                  <span>Open live call</span>
+                </Button>
+              </Link>
+            </div>
+
+            {/* Memory chip if triggered */}
+            {activeMemory && (
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cream-50 border border-warm-amber/50 shadow-xs text-xs font-medium text-ink">
+                <BookHeart className="size-3.5 text-terracotta shrink-0" />
+                <span>{activeMemory}</span>
+              </div>
+            )}
+
+            {/* Live streaming transcript preview */}
+            <div className="rounded-2xl bg-cream-50/80 border border-cream-200/80 p-4 space-y-2 max-h-40 overflow-y-auto">
+              {activeEvents.length === 0 ? (
+                <p className="text-xs text-ink-faint italic">
+                  Connecting audio stream. Conversation turns will stream here…
+                </p>
+              ) : (
+                activeEvents
+                  .filter((e) => e.kind === "turn")
+                  .slice(-4)
+                  .map((ev) => (
+                    <div key={ev.id} className="text-xs leading-relaxed flex items-start gap-2">
+                      <span className="font-semibold text-ink-faint uppercase tracking-wider shrink-0 text-[10px] mt-0.5">
+                        {ev.speaker === "vaani"
+                          ? "Vaani"
+                          : activeCall.people?.nickname || "Person"}
+                        :
+                      </span>
+                      <span className="text-ink">{ev.text}</span>
+                    </div>
+                  ))
+              )}
+            </div>
+          </div>
+        </BlurReveal>
+      )}
 
       {/* NEW USER STATE: No people added yet */}
       {!loading && people.length === 0 ? (

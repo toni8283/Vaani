@@ -2,54 +2,53 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import {
-  DemoCallSimulator,
-  DEMO_SUMMARY,
-  type TurnEvent,
-  type CallSummary,
-} from "@/lib/demo/simulator";
+import type { TurnEvent, CallSummary, CallStatus } from "@/lib/types/call";
 import type { OrbState } from "@/components/call/vaani-orb";
 
 interface UseCallStreamOptions {
   callId: string;
   initialCall?: any;
-  forceDemo?: boolean;
 }
 
-export function useCallStream({
-  callId,
-  initialCall,
-  forceDemo = false,
-}: UseCallStreamOptions) {
+export function useCallStream({ callId, initialCall }: UseCallStreamOptions) {
   const [callData, setCallData] = useState<any>(initialCall || null);
-  const [status, setStatus] = useState<
-    "connecting" | "ringing" | "live" | "ending" | "completed" | "failed" | "no_answer"
-  >(initialCall?.status || "connecting");
+  const [status, setStatus] = useState<CallStatus>(
+    initialCall?.status || "connecting"
+  );
+  const [channel, setChannel] = useState<string>(initialCall?.channel || "phone");
   const [orbState, setOrbState] = useState<OrbState>("dialing");
   const [level, setLevel] = useState(0);
-  const [activeSpeaker, setActiveSpeaker] = useState<"vaani" | "person" | null>(null);
+  const [activeSpeaker, setActiveSpeaker] = useState<"vaani" | "person" | null>(
+    null
+  );
   const [transcript, setTranscript] = useState<TurnEvent[]>([]);
   const [currentTurn, setCurrentTurn] = useState<TurnEvent | null>(null);
   const [memoryTriggered, setMemoryTriggered] = useState<string | null>(null);
-  const [summary, setSummary] = useState<CallSummary | null>(initialCall?.summary || null);
-  const [moodNote, setMoodNote] = useState<string | null>(initialCall?.mood_note || null);
-  const [durationSeconds, setDurationSeconds] = useState<number>(initialCall?.duration_seconds || 0);
-  const [isSimulated, setIsSimulated] = useState(false);
+  const [summary, setSummary] = useState<CallSummary | null>(
+    initialCall?.summary || null
+  );
+  const [moodNote, setMoodNote] = useState<string | null>(
+    initialCall?.mood_note || null
+  );
+  const [durationSeconds, setDurationSeconds] = useState<number>(
+    initialCall?.duration_seconds || 0
+  );
   const [phoneOpen, setPhoneOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [fallbackToast, setFallbackToast] = useState<string | null>(null);
+  const [isEndingOrWriting, setIsEndingOrWriting] = useState(false);
 
-  const simulatorRef = useRef<DemoCallSimulator | null>(null);
+  const fallbackTriggeredRef = useRef(false);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const thinkingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const durationSecondsRef = useRef<number>(initialCall?.duration_seconds || 0);
   const channelsRef = useRef<any[]>([]);
 
-  // Keep durationSecondsRef updated without triggering re-renders
   useEffect(() => {
     durationSecondsRef.current = durationSeconds;
   }, [durationSeconds]);
 
-  // Derive Orb State from status and level
+  // Derive Orb State from status and audio level
   useEffect(() => {
     if (status === "connecting" || status === "ringing") {
       setOrbState("dialing");
@@ -58,18 +57,17 @@ export function useCallStream({
     } else if (status === "completed") {
       setOrbState("idle");
     } else if (status === "live") {
-      if (activeSpeaker === "vaani" && level > 0.15) {
+      if (activeSpeaker === "vaani" && level > 0.12) {
         setOrbState("speaking");
-      } else if (activeSpeaker === "person" && level > 0.15) {
+      } else if (activeSpeaker === "person" && level > 0.12) {
         setOrbState("listening");
       } else {
-        // Between turns
         setOrbState("idle");
       }
     }
   }, [status, activeSpeaker, level]);
 
-  // Duration counter when live
+  // Duration counter during live call
   useEffect(() => {
     if (status === "live") {
       timerIntervalRef.current = setInterval(() => {
@@ -89,94 +87,34 @@ export function useCallStream({
     };
   }, [status]);
 
-  // Sync completed summary to Supabase
-  const persistSummaryToDb = useCallback(
-    async (completedSummary: CallSummary) => {
-      if (!callId) return;
-      try {
-        const supabase = createClient();
-        await supabase
-          .from("calls")
-          .update({
-            status: "completed",
-            summary: completedSummary,
-            mood_note: completedSummary.mood_note,
-            ended_at: new Date().toISOString(),
-            duration_seconds: durationSecondsRef.current || 68,
-          })
-          .eq("id", callId);
-      } catch (err) {
-        console.error("Failed to persist summary:", err);
-      }
-    },
-    [callId]
-  );
+  // Trigger browser fallback via POST /api/calls/[id]/use-browser
+  const triggerBrowserFallback = useCallback(async () => {
+    if (fallbackTriggeredRef.current) return;
+    fallbackTriggeredRef.current = true;
 
-  // Start Demo Simulation
-  const startDemoSimulation = useCallback(() => {
-    if (simulatorRef.current) {
-      simulatorRef.current.destroy();
+    setFallbackToast(
+      "We couldn't reach the phone. Taking the call here in your browser."
+    );
+    setPhoneOpen(true);
+    setStatus("ringing");
+    setChannel("browser");
+
+    try {
+      await fetch(`/api/calls/${callId}/use-browser`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (err) {
+      console.warn("Error requesting browser fallback:", err);
     }
-    setIsSimulated(true);
-    setTranscript([]);
-    setCurrentTurn(null);
-    setMemoryTriggered(null);
-    setDurationSeconds(0);
-    setErrorMessage(null);
+  }, [callId]);
 
-    const sim = new DemoCallSimulator({
-      onStatusChange: (newStatus) => {
-        setStatus(newStatus);
-        if (newStatus === "ringing") {
-          setPhoneOpen(true);
-        } else if (newStatus === "completed" || newStatus === "ending") {
-          setPhoneOpen(false);
-        }
-      },
-      onTurn: (turn) => {
-        setCurrentTurn(turn);
-        if (turn.kind === "turn") {
-          setTranscript((prev) => [...prev, turn]);
-          setActiveSpeaker(turn.speaker === "system" ? null : turn.speaker);
-          // Set thinking between turns
-          if (thinkingTimeoutRef.current) clearTimeout(thinkingTimeoutRef.current);
-          thinkingTimeoutRef.current = setTimeout(() => {
-            setOrbState("thinking");
-          }, 700);
-        }
-      },
-      onLevel: (lvl, spk) => {
-        setLevel(lvl);
-        if (spk) setActiveSpeaker(spk);
-      },
-      onMemoryTrigger: (note) => {
-        setMemoryTriggered(note);
-        setTimeout(() => {
-          setMemoryTriggered(null);
-        }, 6500);
-      },
-      onSummaryReady: (sum) => {
-        setSummary(sum);
-        setMoodNote(sum.mood_note);
-        persistSummaryToDb(sum);
-      },
-    });
-
-    simulatorRef.current = sim;
-    sim.start();
-  }, [persistSummaryToDb]);
-
-  const startDemoSimulationRef = useRef(startDemoSimulation);
-  useEffect(() => {
-    startDemoSimulationRef.current = startDemoSimulation;
-  }, [startDemoSimulation]);
-
-  // Initialize call stream
+  // Realtime Supabase subscriptions
   useEffect(() => {
     let isMounted = true;
     const supabase = createClient();
 
-    // Clean up any prior channels
+    // Clean up any existing channels
     channelsRef.current.forEach((ch) => supabase.removeChannel(ch));
     channelsRef.current = [];
 
@@ -195,28 +133,24 @@ export function useCallStream({
           if (isMounted) setCallData(data);
         }
 
-        const isExplicitDemo =
-          Boolean(forceDemo && !currentCall?.twilio_call_sid && currentCall?.status !== "connecting") ||
-          process.env.NEXT_PUBLIC_DEMO_MODE === "true";
-
-        if (isExplicitDemo) {
-          startDemoSimulationRef.current();
-          return;
-        }
-
-        // Real Call Realtime Subscriptions
         if (currentCall) {
           setStatus(currentCall.status);
+          if (currentCall.channel) setChannel(currentCall.channel);
           if (currentCall.summary) setSummary(currentCall.summary);
-          if (currentCall.duration_seconds) setDurationSeconds(currentCall.duration_seconds);
+          if (currentCall.mood_note) setMoodNote(currentCall.mood_note);
+          if (currentCall.duration_seconds) {
+            setDurationSeconds(currentCall.duration_seconds);
+          }
 
-          if (currentCall.status === "failed") {
-            setErrorMessage(
-              "Twilio Trial Notice: Trial accounts can only ring verified phone numbers. Interactive Browser Voice Mode is active below — click Accept to talk to Vaani with your microphone!"
-            );
-            setPhoneOpen(true);
-            startDemoSimulationRef.current();
-            return;
+          // If fallback is already available on initial load
+          if (
+            currentCall.fallback_available ||
+            currentCall.status === "ringing_failed" ||
+            currentCall.status === "failed" ||
+            currentCall.status === "no_answer" ||
+            currentCall.status === "declined"
+          ) {
+            triggerBrowserFallback();
           }
 
           // 1. Fetch existing call events
@@ -238,7 +172,7 @@ export function useCallStream({
             );
           }
 
-          // 2. Realtime subscription to `calls` table changes
+          // 2. Realtime subscription to `calls` table
           const callChannel = supabase
             .channel(`call_status_${callId}`)
             .on(
@@ -253,49 +187,30 @@ export function useCallStream({
                 if (!isMounted) return;
                 const updated = payload.new as any;
                 if (updated.status) setStatus(updated.status);
+                if (updated.channel) setChannel(updated.channel);
                 if (updated.summary) setSummary(updated.summary);
                 if (updated.mood_note) setMoodNote(updated.mood_note);
-                if (updated.duration_seconds) setDurationSeconds(updated.duration_seconds);
+                if (updated.duration_seconds) {
+                  setDurationSeconds(updated.duration_seconds);
+                }
+
+                // Check for fallback availability
+                if (
+                  updated.fallback_available ||
+                  updated.status === "ringing_failed" ||
+                  updated.status === "failed" ||
+                  updated.status === "no_answer" ||
+                  updated.status === "declined"
+                ) {
+                  triggerBrowserFallback();
+                }
 
                 // Auto-close companion phone when real call ends
                 if (
                   updated.status === "completed" ||
-                  updated.status === "ending" ||
-                  updated.status === "no_answer"
+                  updated.status === "ending"
                 ) {
                   setPhoneOpen(false);
-                }
-
-                if (updated.status === "completed" && !updated.summary) {
-                  const contactName =
-                    currentCall?.people?.nickname ||
-                    currentCall?.people?.name ||
-                    "loved one";
-                  setSummary((prev) =>
-                    prev || {
-                      what_happened: `Vaani completed the check-in call with ${contactName}.`,
-                      important_updates: [
-                        "Call connected via Twilio telephony.",
-                        "Check-in conversation completed.",
-                      ],
-                      worth_remembering: [
-                        `Appreciated the thoughtful check-in call.`,
-                      ],
-                      next_call: [
-                        `Follow up with ${contactName} soon for another check-in.`,
-                      ],
-                      mood_note: `${contactName} received the call. Staying regularly in touch brings reassurance!`,
-                      needs_attention: false,
-                    }
-                  );
-                }
-
-                if (updated.status === "failed") {
-                  setErrorMessage(
-                    "Twilio Trial Notice: Trial accounts can only ring verified phone numbers. Interactive Browser Voice Mode is active below — click Accept to talk to Vaani with your microphone!"
-                  );
-                  setPhoneOpen(true);
-                  startDemoSimulationRef.current();
                 }
               }
             )
@@ -326,7 +241,15 @@ export function useCallStream({
                 setCurrentTurn(turn);
                 if (turn.kind === "turn") {
                   setTranscript((prev) => [...prev, turn]);
-                  setActiveSpeaker(turn.speaker === "system" ? null : turn.speaker);
+                  setActiveSpeaker(
+                    turn.speaker === "system" ? null : turn.speaker
+                  );
+                  if (thinkingTimeoutRef.current) {
+                    clearTimeout(thinkingTimeoutRef.current);
+                  }
+                  thinkingTimeoutRef.current = setTimeout(() => {
+                    setOrbState("thinking");
+                  }, 600);
                 } else if (turn.kind === "memory_used") {
                   setMemoryTriggered(turn.text);
                   setTimeout(() => setMemoryTriggered(null), 6000);
@@ -350,10 +273,6 @@ export function useCallStream({
         }
       } catch (err: unknown) {
         console.error("Call stream error:", err);
-        // Fallback to simulation if network/auth fails
-        if (isMounted) {
-          startDemoSimulationRef.current();
-        }
       }
     };
 
@@ -363,50 +282,40 @@ export function useCallStream({
       isMounted = false;
       channelsRef.current.forEach((ch) => supabase.removeChannel(ch));
       channelsRef.current = [];
-      if (simulatorRef.current) {
-        simulatorRef.current.destroy();
-      }
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current);
-      }
-      if (thinkingTimeoutRef.current) {
-        clearTimeout(thinkingTimeoutRef.current);
-      }
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      if (thinkingTimeoutRef.current) clearTimeout(thinkingTimeoutRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [callId, forceDemo]);
+  }, [callId, triggerBrowserFallback]);
 
   const answerCall = useCallback(() => {
-    if (simulatorRef.current) {
-      simulatorRef.current.answerNow();
-    } else {
-      setStatus("live");
-      startDemoSimulationRef.current();
-      setTimeout(() => {
-        simulatorRef.current?.answerNow();
-      }, 60);
-    }
+    setStatus("live");
   }, []);
 
-  const endCall = useCallback(() => {
-    if (simulatorRef.current) {
-      simulatorRef.current.endNow();
-    } else {
-      setStatus("ending");
-      // Update Supabase
+  const endCall = useCallback(async () => {
+    setStatus("ending");
+    setIsEndingOrWriting(true);
+    setPhoneOpen(false);
+
+    try {
       const supabase = createClient();
-      supabase
+      await supabase
         .from("calls")
-        .update({ status: "ending", ended_at: new Date().toISOString() })
-        .eq("id", callId)
-        .then(() => {});
+        .update({
+          status: "ending",
+          ended_at: new Date().toISOString(),
+          duration_seconds: durationSecondsRef.current || 1,
+        })
+        .eq("id", callId);
+    } catch (err) {
+      console.error("Error ending call:", err);
     }
   }, [callId]);
 
   const appendUserTurn = useCallback((text: string) => {
     if (!text.trim()) return;
     const newTurn: TurnEvent = {
-      id: `user-speech-${Date.now()}`,
+      id: `user-${Date.now()}`,
       speaker: "person",
       text: text.trim(),
       at_ms: (durationSecondsRef.current || 1) * 1000,
@@ -420,6 +329,7 @@ export function useCallStream({
   return {
     callData,
     status,
+    channel,
     orbState,
     level,
     activeSpeaker,
@@ -429,13 +339,16 @@ export function useCallStream({
     summary,
     moodNote,
     durationSeconds,
-    isSimulated,
     phoneOpen,
     setPhoneOpen,
     errorMessage,
+    fallbackToast,
+    setFallbackToast,
+    triggerBrowserFallback,
+    isEndingOrWriting,
+    setIsEndingOrWriting,
     answerCall,
     endCall,
     appendUserTurn,
-    restartDemo: startDemoSimulation,
   };
 }

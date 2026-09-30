@@ -1,12 +1,13 @@
-// Web Audio and Speech Synthesis helper for the browser phone simulator
+// Web Audio helper for keypad tones, ringtones, and call sound effects
 
 let audioCtx: AudioContext | null = null;
 
-function getAudioContext(): AudioContext | null {
+export function getAudioContext(): AudioContext | null {
   if (typeof window === "undefined") return null;
   if (!audioCtx) {
     const AudioContextClass =
-      window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (AudioContextClass) {
       audioCtx = new AudioContextClass();
     }
@@ -17,7 +18,7 @@ function getAudioContext(): AudioContext | null {
   return audioCtx;
 }
 
-// DTMF Frequencies
+// DTMF Frequencies for phone keypad
 const DTMF_FREQS: Record<string, [number, number]> = {
   "1": [697, 1209],
   "2": [697, 1336],
@@ -159,175 +160,65 @@ export function playHangupSound() {
 }
 
 /**
- * Speak text using browser SpeechSynthesis if supported
+ * Converts Float32Array audio samples to 24kHz mono 16-bit linear PCM (Int16Array).
  */
-export function speakSpeech(text: string, onEnd?: () => void) {
-  if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-    onEnd?.();
-    return;
+export function resampleTo24kPcm16(
+  inputData: Float32Array,
+  inputSampleRate: number
+): Int16Array {
+  if (inputSampleRate === 24000) {
+    const pcm16 = new Int16Array(inputData.length);
+    for (let i = 0; i < inputData.length; i++) {
+      const s = Math.max(-1, Math.min(1, inputData[i]));
+      pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+    }
+    return pcm16;
   }
 
-  try {
-    window.speechSynthesis.cancel();
-    if (window.speechSynthesis.paused) {
-      window.speechSynthesis.resume();
-    }
+  const ratio = inputSampleRate / 24000;
+  const newLength = Math.round(inputData.length / ratio);
+  const result = new Int16Array(newLength);
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.95;
-    utterance.pitch = 1.05;
-
-    const voices = window.speechSynthesis.getVoices();
-    const naturalVoice =
-      voices.find(
-        (v) =>
-          v.lang.startsWith("en") &&
-          (v.name.includes("Natural") ||
-            v.name.includes("Samantha") ||
-            v.name.includes("Google") ||
-            v.name.includes("Karen") ||
-            v.name.includes("Serena"))
-      ) ||
-      voices.find((v) => v.lang.startsWith("en")) ||
-      voices[0];
-
-    if (naturalVoice) {
-      utterance.voice = naturalVoice;
-    }
-
-    utterance.onend = () => onEnd?.();
-    utterance.onerror = () => onEnd?.();
-
-    window.speechSynthesis.speak(utterance);
-  } catch (err) {
-    console.warn("Speech synthesis error:", err);
-    onEnd?.();
+  for (let i = 0; i < newLength; i++) {
+    const srcIndex = i * ratio;
+    const index = Math.floor(srcIndex);
+    const decimal = srcIndex - index;
+    const s1 = inputData[index] ?? 0;
+    const s2 = inputData[index + 1] ?? s1;
+    const s = s1 + decimal * (s2 - s1);
+    const clamped = Math.max(-1, Math.min(1, s));
+    result[i] = clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff;
   }
+
+  return result;
 }
 
 /**
- * Stop any current speech
+ * Encodes Int16Array linear PCM to base64 string
  */
-export function stopSpeech() {
-  if (typeof window !== "undefined" && "speechSynthesis" in window) {
-    try {
-      window.speechSynthesis.cancel();
-    } catch {}
+export function pcm16ToBase64(pcm16: Int16Array): string {
+  const bytes = new Uint8Array(pcm16.buffer, pcm16.byteOffset, pcm16.byteLength);
+  let binary = "";
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
   }
-}
-
-export interface MicrophoneSession {
-  stream: MediaStream;
-  stop: () => void;
-  setMuted: (muted: boolean) => void;
+  return btoa(binary);
 }
 
 /**
- * Requests microphone permission and streams real-time audio amplitude
+ * Decodes base64 string containing 16-bit linear PCM into Float32Array
  */
-export async function requestMicrophone(
-  onLevel?: (level: number) => void
-): Promise<MicrophoneSession | null> {
-  if (typeof window === "undefined" || !navigator.mediaDevices?.getUserMedia) {
-    return null;
+export function base64Pcm16ToFloat32(base64: string): Float32Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
   }
-
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-      },
-    });
-
-    const ctx = getAudioContext();
-    let animId: number | null = null;
-
-    if (ctx) {
-      const source = ctx.createMediaStreamSource(stream);
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.3;
-      source.connect(analyser);
-
-      const buffer = new Uint8Array(analyser.frequencyBinCount);
-
-      const checkLevel = () => {
-        analyser.getByteFrequencyData(buffer);
-        let sum = 0;
-        for (let i = 0; i < buffer.length; i++) {
-          sum += buffer[i];
-        }
-        const avg = sum / buffer.length;
-        const normalized = Math.min(1, Math.max(0, avg / 110));
-        onLevel?.(normalized);
-        animId = requestAnimationFrame(checkLevel);
-      };
-
-      if (onLevel) {
-        animId = requestAnimationFrame(checkLevel);
-      }
-    }
-
-    return {
-      stream,
-      setMuted: (muted: boolean) => {
-        stream.getAudioTracks().forEach((track) => {
-          track.enabled = !muted;
-        });
-      },
-      stop: () => {
-        if (animId) cancelAnimationFrame(animId);
-        stream.getTracks().forEach((track) => track.stop());
-      },
-    };
-  } catch (err) {
-    console.warn("Could not access microphone:", err);
-    return null;
+  const int16 = new Int16Array(bytes.buffer);
+  const float32 = new Float32Array(int16.length);
+  for (let i = 0; i < int16.length; i++) {
+    float32[i] = int16[i] / 32768.0;
   }
-}
-
-/**
- * Starts continuous browser speech recognition if supported
- */
-export function startSpeechRecognition(
-  onTranscript: (spokenText: string) => void
-): (() => void) | null {
-  if (typeof window === "undefined") return null;
-
-  const SpeechRec =
-    (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-
-  if (!SpeechRec) return null;
-
-  try {
-    const recognition = new SpeechRec();
-    recognition.continuous = true;
-    recognition.interimResults = false;
-    recognition.lang = "en-IN";
-
-    recognition.onresult = (event: any) => {
-      const last = event.results.length - 1;
-      const text = event.results[last][0]?.transcript?.trim();
-      if (text) {
-        onTranscript(text);
-      }
-    };
-
-    recognition.onerror = (err: any) => {
-      console.warn("Browser speech recognition error:", err);
-    };
-
-    recognition.start();
-
-    return () => {
-      try {
-        recognition.stop();
-      } catch {}
-    };
-  } catch (err) {
-    console.warn("Speech recognition not supported or initialization failed:", err);
-    return null;
-  }
+  return float32;
 }

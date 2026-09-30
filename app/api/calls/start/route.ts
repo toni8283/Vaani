@@ -13,6 +13,8 @@ export async function POST(req: NextRequest) {
       process.env.NEXT_PUBLIC_CALL_SERVER_URL ||
       "http://localhost:8080";
 
+    const apiSecret = process.env.CALL_SERVER_SECRET || "";
+
     // Attempt to contact call-server
     try {
       const controller = new AbortController();
@@ -20,7 +22,10 @@ export async function POST(req: NextRequest) {
 
       const res = await fetch(`${callServerUrl}/calls/start`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-secret": apiSecret,
+        },
         body: JSON.stringify({ callId, force: force ?? true }),
         signal: controller.signal,
       });
@@ -32,21 +37,32 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: true, data });
       } else {
         const errData = await res.json().catch(() => null);
-        console.warn("[/api/calls/start] Call server returned non-200:", errData);
+        console.warn("[/api/calls/start] Call server returned error:", errData);
+        return NextResponse.json(
+          {
+            error:
+              errData?.error ||
+              "That call didn't go through. Nothing was said, and nobody was bothered. Want to try again?",
+          },
+          { status: res.status || 500 }
+        );
       }
     } catch (fetchErr: unknown) {
       console.warn("[/api/calls/start] Could not reach call server:", fetchErr);
-      // Fallback to browser simulation
+      return NextResponse.json(
+        {
+          error:
+            "Something went wrong on our side. Your notes are safe. Please try again.",
+        },
+        { status: 502 }
+      );
     }
-
-    return NextResponse.json({
-      success: true,
-      message: "Call initialized in demo/browser mode",
-      simulated: true,
-    });
   } catch (err: unknown) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to start call" },
+      {
+        error:
+          "Something went wrong on our side. Your notes are safe. Please try again.",
+      },
       { status: 500 }
     );
   }

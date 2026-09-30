@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useEffect, useState, useRef } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -15,7 +15,6 @@ import {
   Clock,
   Heart,
   AlertTriangle,
-  RotateCcw,
   Check,
   ChevronRight,
   Smartphone,
@@ -26,8 +25,9 @@ import { AvatarOrb } from "@/components/ui/avatar-orb";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
-import { PhoneSimulator } from "@/components/call/phone-simulator";
-import { useCallStream } from "@/hooks/use-call-stream";
+import { PhoneMockup } from "@/components/call/phone-mockup";
+import { useCallStream } from "@/lib/hooks/use-call-stream";
+import { useBrowserCall } from "@/lib/hooks/use-browser-call";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LiveCallPage() {
@@ -46,39 +46,14 @@ export default function LiveCallPage() {
 
 function LiveCallContent() {
   const params = useParams();
-  const searchParams = useSearchParams();
   const router = useRouter();
   const callId = params?.id as string;
-  const isDemoQuery = searchParams.get("demo") === "true";
 
   const [callData, setCallData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Triple 'D' keypress detector for quick judge demo
-  const dPressCountRef = useRef(0);
-  const dPressTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const restartDemoRef = useRef<(() => void) | null>(null);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === "d" && !e.metaKey && !e.ctrlKey) {
-        dPressCountRef.current += 1;
-        if (dPressTimerRef.current) clearTimeout(dPressTimerRef.current);
-        dPressTimerRef.current = setTimeout(() => {
-          dPressCountRef.current = 0;
-        }, 1000);
-
-        if (dPressCountRef.current >= 3) {
-          dPressCountRef.current = 0;
-          restartDemoRef.current?.();
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  const isDemoMode = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
 
   // Fetch initial call record
   useEffect(() => {
@@ -119,6 +94,7 @@ function LiveCallContent() {
 
   const {
     status,
+    channel,
     orbState,
     level,
     activeSpeaker,
@@ -128,38 +104,44 @@ function LiveCallContent() {
     summary,
     moodNote,
     durationSeconds,
-    isSimulated,
     phoneOpen,
     setPhoneOpen,
     errorMessage,
+    fallbackToast,
+    setFallbackToast,
+    triggerBrowserFallback,
+    isEndingOrWriting,
     answerCall,
     endCall,
-    restartDemo,
   } = useCallStream({
     callId,
     initialCall: callData,
-    forceDemo: Boolean(isDemoQuery && !callData?.twilio_call_sid),
   });
 
-  restartDemoRef.current = restartDemo;
+  const browserCall = useBrowserCall(callId);
 
-  // Transcript auto-scroll
+  // Auto-scroll transcript to bottom
   const transcriptBottomRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     transcriptBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [transcript]);
 
-  // Auto-close companion phone and show toast when call completes
+  // Toast for summary completion
   useEffect(() => {
-    if (status === "completed") {
-      setPhoneOpen(false);
+    if (status === "completed" && summary) {
       setToastMessage("Summary sent to your phone.");
       const t = setTimeout(() => setToastMessage(null), 6000);
       return () => clearTimeout(t);
-    } else if (status === "ending" || status === "no_answer") {
-      setPhoneOpen(false);
     }
-  }, [status, setPhoneOpen]);
+  }, [status, summary]);
+
+  // Clear fallback toast after 6s
+  useEffect(() => {
+    if (fallbackToast) {
+      const t = setTimeout(() => setFallbackToast(null), 6000);
+      return () => clearTimeout(t);
+    }
+  }, [fallbackToast, setFallbackToast]);
 
   const formatTimer = (totalSeconds: number) => {
     const mins = Math.floor(totalSeconds / 60)
@@ -178,10 +160,11 @@ function LiveCallContent() {
         .filter(Boolean)
         .slice(0, 3);
     }
-    return ["Her knee", "Meena's wedding", "Your message"];
+    return ["Check in warmly", "Listen carefully", "Family updates"];
   }, [callData]);
 
   const nickname = person.nickname || person.name || "Maa";
+  const effectiveLevel = Math.max(level, browserCall.level, browserCall.agentLevel);
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center bg-cream bg-[radial-gradient(ellipse_at_50%_30%,#FBD9A8_0%,rgba(250,246,240,0)_65%)] overflow-y-auto px-4 py-4 md:py-6 selection:bg-terracotta-subtle">
@@ -230,36 +213,29 @@ function LiveCallContent() {
           )}
         </div>
 
-        {/* Right Actions: Phone Simulator Trigger, Demo Trigger & End Call */}
+        {/* Right Actions: End Call or Call Details */}
         <div className="flex items-center gap-2">
-          {/* Phone Simulator Launch Button */}
-          <button
-            type="button"
-            onClick={() => setPhoneOpen(true)}
-            title="Open Rose-Gold iPhone Simulator"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-cream-50/90 hover:bg-cream-100 border border-terracotta/30 text-small font-medium text-terracotta shadow-xs transition hover:scale-105 active:scale-95"
-          >
-            <Smartphone className="size-4" />
-            <span className="hidden sm:inline">Phone Simulator</span>
-          </button>
+          {isDemoMode && (
+            <button
+              type="button"
+              onClick={() => setPhoneOpen(true)}
+              title="Open Phone Mockup"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-cream-50/90 hover:bg-cream-100 border border-terracotta/30 text-small font-medium text-terracotta shadow-xs transition"
+            >
+              <Smartphone className="size-4" />
+              <span className="hidden sm:inline">Phone Mockup</span>
+            </button>
+          )}
 
-          {/* Quick Demo Restart */}
-          <button
-            type="button"
-            onClick={restartDemo}
-            title="Replay simulated call"
-            className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-cream-100/70 hover:bg-cream-100 border border-cream-200 text-xs text-ink-soft hover:text-ink transition"
-          >
-            <RotateCcw className="size-3.5" />
-            <span>Replay</span>
-          </button>
-
-          {/* End Call Button */}
           {status !== "completed" && (
             <Button
               variant="quiet"
               size="sm"
-              onClick={endCall}
+              onClick={() => {
+                browserCall.end();
+                endCall();
+                setPhoneOpen(false);
+              }}
               className="text-rust hover:bg-rust/10 hover:text-rust font-medium"
             >
               <PhoneOff className="size-4 mr-1.5" />
@@ -279,7 +255,7 @@ function LiveCallContent() {
       </header>
 
       {/* 
-        2. ERROR / TWILIO FALLBACK BANNER (If call failed or remote judge notice)
+        2. ERROR BANNER (if any)
       */}
       {errorMessage && (
         <motion.div
@@ -291,12 +267,6 @@ function LiveCallContent() {
           <div className="flex-1">
             <p className="font-medium text-ink">{errorMessage}</p>
           </div>
-          <button
-            onClick={() => setPhoneOpen(true)}
-            className="underline font-semibold text-terracotta text-xs shrink-0"
-          >
-            Open Phone
-          </button>
         </motion.div>
       )}
 
@@ -313,14 +283,12 @@ function LiveCallContent() {
               className="relative flex items-center justify-center my-2"
               transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
             >
-              <VaaniOrb state={orbState} level={level} />
+              <VaaniOrb state={orbState} level={effectiveLevel} />
             </motion.div>
           ) : null}
         </AnimatePresence>
 
-        {/* 
-          Status Headline & Subtitle per State
-        */}
+        {/* Status Headline & Subtitle */}
         <div className="mt-8 text-center space-y-2 max-w-xl px-4">
           {status === "connecting" && (
             <motion.div
@@ -336,7 +304,6 @@ function LiveCallContent() {
                 Vaani has your notes: {noteTopics.join(", ")}, and your personal message.
               </p>
 
-              {/* Three note chips sliding up */}
               <div className="flex items-center justify-center gap-2 pt-2 flex-wrap">
                 {noteTopics.map((topic: string, i: number) => (
                   <motion.div
@@ -373,6 +340,17 @@ function LiveCallContent() {
                   0:0{Math.min(9, durationSeconds + 4)}
                 </span>
               </div>
+
+              {/* Quiet link to take the call in browser */}
+              <div className="pt-2 text-center">
+                <button
+                  type="button"
+                  onClick={triggerBrowserFallback}
+                  className="text-xs text-ink-soft hover:text-terracotta underline font-medium transition-colors cursor-pointer"
+                >
+                  Take this call in my browser
+                </button>
+              </div>
             </motion.div>
           )}
 
@@ -402,9 +380,7 @@ function LiveCallContent() {
                     Vaani is thinking…
                   </span>
                 )}
-                {orbState === "idle" && (
-                  <span>Listening…</span>
-                )}
+                {orbState === "idle" && <span>Listening…</span>}
               </p>
             </motion.div>
           )}
@@ -425,7 +401,7 @@ function LiveCallContent() {
             </motion.div>
           )}
 
-          {status === "completed" && (
+          {status === "completed" && summary && (
             <motion.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
@@ -443,7 +419,7 @@ function LiveCallContent() {
         </div>
 
         {/* 
-          4. BOTTOM HALF: MEMORY CHIP & GLASS TRANSCRIPT PANEL (when active)
+          4. BOTTOM HALF: MEMORY CHIP & LIVE TRANSCRIPT PANEL (when active)
         */}
         {status !== "completed" && (
           <div className="w-full max-w-xl mt-6 space-y-3">
@@ -488,7 +464,6 @@ function LiveCallContent() {
                         isVaani ? "text-ink" : "text-ink-soft"
                       }`}
                     >
-                      {/* Avatar indicator */}
                       <div className="shrink-0 mt-0.5">
                         {isVaani ? (
                           <div className="size-5 rounded-full bg-gradient-to-tr from-terracotta to-warm-amber shadow-xs flex items-center justify-center">
@@ -501,7 +476,6 @@ function LiveCallContent() {
                         )}
                       </div>
 
-                      {/* Message Content */}
                       <div className="flex-1 space-y-0.5">
                         <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
                           {isVaani ? "Vaani" : nickname}
@@ -515,7 +489,7 @@ function LiveCallContent() {
                 })
               )}
 
-              {/* Three-dot thinking indicator */}
+              {/* Thinking indicator */}
               {orbState === "thinking" && (
                 <div className="flex items-center gap-1.5 py-1 px-8 text-ink-faint">
                   <span className="size-1.5 rounded-full bg-terracotta animate-bounce" />
@@ -531,7 +505,26 @@ function LiveCallContent() {
         )}
 
         {/* 
-          5. SUMMARY REVEAL CARD (when status === "completed")
+          5. POST-CALL LOADING: "Writing up how it went..." until summary exists
+        */}
+        {(status === "completed" || isEndingOrWriting) && !summary && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-md py-12 flex flex-col items-center justify-center text-center space-y-3.5"
+          >
+            <div className="size-9 rounded-full border-2 border-terracotta border-t-transparent animate-spin" />
+            <h2 className="font-display text-2xl text-ink font-medium tracking-tight">
+              Writing up how it went…
+            </h2>
+            <p className="text-small text-ink-soft max-w-xs leading-relaxed">
+              Summarizing the conversation highlights, key updates, and memories.
+            </p>
+          </motion.div>
+        )}
+
+        {/* 
+          6. SUMMARY REVEAL CARD (when status === "completed" and summary exists)
         */}
         {status === "completed" && summary && (
           <motion.div
@@ -540,7 +533,6 @@ function LiveCallContent() {
             transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
             className="w-full max-w-2xl rounded-card bg-cream-50 border border-cream-200 shadow-lg p-6 md:p-8 space-y-6"
           >
-            {/* Header: Mini Orb Avatar + Info */}
             <div className="flex items-center justify-between pb-4 border-b border-cream-200/80">
               <div className="flex items-center gap-3">
                 <AvatarOrb name={nickname} tint={person.tint || "#F2A65A"} size="md" />
@@ -549,7 +541,7 @@ function LiveCallContent() {
                     Call with {nickname}
                   </h2>
                   <p className="text-small text-ink-soft">
-                    {formatTimer(durationSeconds || 68)} duration · Completed
+                    {formatTimer(durationSeconds || 60)} duration · Completed
                   </p>
                 </div>
               </div>
@@ -561,8 +553,7 @@ function LiveCallContent() {
               </div>
             </div>
 
-            {/* Vaani's Note to You (Handwritten feel) */}
-            {summary.mood_note && (
+            {moodNote && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -574,25 +565,24 @@ function LiveCallContent() {
                   <span>Vaani&apos;s note to you</span>
                 </div>
                 <p className="text-body font-display italic text-ink leading-relaxed">
-                  &ldquo;{summary.mood_note}&rdquo;
+                  &ldquo;{moodNote}&rdquo;
                 </p>
               </motion.div>
             )}
 
-            {/* Four Summary Blocks */}
             <div className="space-y-4">
-              {/* Block 1: What happened */}
-              <div className="space-y-1">
-                <h3 className="text-small font-semibold uppercase tracking-wider text-ink-faint">
-                  What happened
-                </h3>
-                <p className="text-body text-ink leading-relaxed">
-                  {summary.what_happened}
-                </p>
-              </div>
+              {summary.what_happened && (
+                <div className="space-y-1">
+                  <h3 className="text-small font-semibold uppercase tracking-wider text-ink-faint">
+                    What happened
+                  </h3>
+                  <p className="text-body text-ink leading-relaxed">
+                    {summary.what_happened}
+                  </p>
+                </div>
+              )}
 
-              {/* Block 2: Important updates */}
-              {summary.important_updates?.length > 0 && (
+              {summary.important_updates && summary.important_updates.length > 0 && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <h3 className="text-small font-semibold uppercase tracking-wider text-ink-faint">
@@ -618,8 +608,7 @@ function LiveCallContent() {
                 </div>
               )}
 
-              {/* Block 3: Things worth remembering */}
-              {summary.worth_remembering?.length > 0 && (
+              {summary.worth_remembering && summary.worth_remembering.length > 0 && (
                 <div className="space-y-2">
                   <h3 className="text-small font-semibold uppercase tracking-wider text-ink-faint">
                     Things worth remembering
@@ -638,8 +627,7 @@ function LiveCallContent() {
                 </div>
               )}
 
-              {/* Block 4: For your next call */}
-              {summary.next_call?.length > 0 && (
+              {summary.next_call && summary.next_call.length > 0 && (
                 <div className="space-y-2">
                   <h3 className="text-small font-semibold uppercase tracking-wider text-ink-faint">
                     For your next call
@@ -659,7 +647,6 @@ function LiveCallContent() {
               )}
             </div>
 
-            {/* Bottom Actions */}
             <div className="pt-4 border-t border-cream-200/80 flex flex-col sm:flex-row items-center justify-between gap-3">
               <Link href={`/calls/${callId}`}>
                 <Button variant="primary" className="w-full sm:w-auto gap-2">
@@ -668,31 +655,32 @@ function LiveCallContent() {
                 </Button>
               </Link>
 
-              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                <Button
-                  variant="ghost"
-                  onClick={restartDemo}
-                  className="w-full sm:w-auto text-small text-ink-soft hover:text-ink"
-                >
-                  <RotateCcw className="size-4 mr-1.5" />
-                  <span>Replay</span>
+              <Link href="/home">
+                <Button variant="ghost" className="w-full sm:w-auto">
+                  Done
                 </Button>
-
-                <Link href="/home">
-                  <Button variant="ghost" className="w-full sm:w-auto">
-                    Done
-                  </Button>
-                </Link>
-              </div>
+              </Link>
             </div>
           </motion.div>
         )}
       </div>
 
       {/* 
-        6. SUCCESS TOAST NOTIFICATION 
+        7. TOAST NOTIFICATIONS (Summary sent / Fallback activated)
       */}
       <AnimatePresence>
+        {fallbackToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-6 z-50 px-5 py-3 rounded-2xl bg-cream-50/95 backdrop-blur-xl border border-warm-amber/50 shadow-xl text-small text-ink flex items-center gap-2.5 font-medium"
+          >
+            <Sparkles className="size-4 text-warm-amber shrink-0" />
+            <span>{fallbackToast}</span>
+          </motion.div>
+        )}
+
         {toastMessage && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -707,9 +695,9 @@ function LiveCallContent() {
       </AnimatePresence>
 
       {/* 
-        7. BROWSER PHONE SIMULATOR COMPANION (White & Rose-Gold iPhone)
+        8. ROSE-GOLD IPHONE MOCKUP (Slides up from bottom-left for real browser call)
       */}
-      <PhoneSimulator
+      <PhoneMockup
         isOpen={phoneOpen}
         onClose={() => setPhoneOpen(false)}
         callerName={person.name}
@@ -717,30 +705,21 @@ function LiveCallContent() {
         callerPhone={person.phone_e164}
         callerTint={person.tint}
         status={status}
-        level={level}
+        level={effectiveLevel}
         durationSeconds={durationSeconds}
         currentTurn={currentTurn}
-        onAnswerCall={answerCall}
-        onEndCall={endCall}
+        onAnswerCall={async () => {
+          answerCall();
+          await browserCall.start();
+        }}
+        onEndCall={() => {
+          browserCall.end();
+          endCall();
+          setPhoneOpen(false);
+        }}
         notes={callData?.notes}
+        browserCall={browserCall}
       />
-
-      {/* Floating button to restore companion phone when closed */}
-      <AnimatePresence>
-        {!phoneOpen && (
-          <motion.button
-            initial={{ opacity: 0, scale: 0.9, y: 12 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 12 }}
-            onClick={() => setPhoneOpen(true)}
-            title="Open Phone Simulator"
-            className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full bg-ink text-cream shadow-xl border border-cream/20 hover:bg-ink/90 active:scale-95 transition-all text-xs font-medium cursor-pointer"
-          >
-            <Smartphone className="size-4 text-warm-amber" />
-            <span>Interactive Phone</span>
-          </motion.button>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

@@ -20,11 +20,9 @@ import {
   Check,
   X,
   Sparkles,
-  AlertTriangle,
-  RotateCcw,
   BookHeart,
 } from "lucide-react";
-import { DEMO_SUMMARY, DEMO_TURNS } from "@/lib/demo/simulator";
+import type { TurnEvent, CallSummary } from "@/lib/types/call";
 
 interface CallMemoryItem {
   id: string;
@@ -82,7 +80,7 @@ export default function CallDetailPage() {
           setEvents(eventRows);
         }
 
-        // 3. Fetch or initialize Memories from this call
+        // 3. Fetch Memories from this call
         const { data: memoryRows } = await supabase
           .from("memories")
           .select("*")
@@ -97,9 +95,9 @@ export default function CallDetailPage() {
               saved: true,
             }))
           );
-        } else {
-          // Initialize suggested memories from summary or demo
-          const initialSuggestions = (callData?.summary?.worth_remembering || DEMO_SUMMARY.worth_remembering).map(
+        } else if (callData?.summary?.worth_remembering) {
+          // Suggested memories from the actual summary
+          const initialSuggestions = callData.summary.worth_remembering.map(
             (text: string, i: number) => ({
               id: `suggested-${i}`,
               content: text,
@@ -120,28 +118,31 @@ export default function CallDetailPage() {
   }, [callId]);
 
   const person = call?.people || {
-    name: "Maa",
-    nickname: "Maa",
-    relationship: "Mother",
-    phone_e164: "+91 98765 43210",
+    name: "Loved one",
+    nickname: "Loved one",
+    relationship: "Family",
+    phone_e164: "",
     tint: "#F2A65A",
   };
 
-  const nickname = person.nickname || person.name || "Maa";
-  const summary = call?.summary || DEMO_SUMMARY;
-  const moodNote = call?.mood_note || summary?.mood_note || DEMO_SUMMARY.mood_note;
+  const nickname = person.nickname || person.name || "Loved one";
+  const summary: CallSummary | null = call?.summary || null;
+  const moodNote: string | null = call?.mood_note || summary?.mood_note || null;
 
-  // Use stored events or fall back to demo turns
-  const displayTurns = useMemo(() => {
+  // Stored real events
+  const displayTurns: TurnEvent[] = useMemo(() => {
     if (events.length > 0) {
-      return events.filter((e) => e.kind === "turn");
+      return events
+        .filter((e) => e.kind === "turn")
+        .map((e) => ({
+          id: e.id.toString(),
+          speaker: e.speaker,
+          text: e.text,
+          at_ms: e.at_ms || 0,
+          kind: "turn",
+        }));
     }
-    return DEMO_TURNS.filter((t) => t.kind === "turn").map((t, idx) => ({
-      id: `turn-${idx}`,
-      speaker: t.speaker,
-      text: t.text,
-      at_ms: t.at_ms,
-    }));
+    return [];
   }, [events]);
 
   // Filter transcript by search query
@@ -195,7 +196,7 @@ export default function CallDetailPage() {
 
   // Share summary
   const handleShare = async () => {
-    const text = `Vaani call summary with ${nickname}:\n${summary?.what_happened}\n\nNote: "${moodNote}"`;
+    const text = `Vaani call summary with ${nickname}:\n${summary?.what_happened || ""}\n\nNote: "${moodNote || ""}"`;
     if (navigator.share) {
       try {
         await navigator.share({
@@ -228,8 +229,12 @@ export default function CallDetailPage() {
     );
   }
 
-  // Handle No Answer / Declined empty state
-  if (call?.status === "no_answer" || call?.status === "declined") {
+  // Handle No Answer / Declined empty state per Brief Section 5
+  if (
+    call?.status === "no_answer" ||
+    call?.status === "declined" ||
+    call?.status === "ringing_failed"
+  ) {
     return (
       <div className="max-w-xl mx-auto py-12 space-y-6 text-center">
         <div className="size-20 rounded-full bg-honey/10 text-honey mx-auto flex items-center justify-center">
@@ -240,11 +245,38 @@ export default function CallDetailPage() {
             {nickname} didn&apos;t pick up.
           </h1>
           <p className="text-body text-ink-soft">
-            {nickname} didn&apos;t pick up. Want Vaani to try again later?
+            {nickname} didn&apos;t pick up. That&apos;s okay. Want Vaani to try again in an hour?
           </p>
         </div>
         <div className="flex items-center justify-center gap-3 pt-2">
-          <Link href={`/calls/${callId}/live?demo=true`}>
+          <Link href={`/calls/new?personId=${call?.person_id || ""}`}>
+            <Button variant="primary">Try again</Button>
+          </Link>
+          <Link href="/home">
+            <Button variant="ghost">Back home</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle Failed Call empty state per Brief Section 5
+  if (call?.status === "failed") {
+    return (
+      <div className="max-w-xl mx-auto py-12 space-y-6 text-center">
+        <div className="size-20 rounded-full bg-rust/10 text-rust mx-auto flex items-center justify-center">
+          <PhoneCall className="size-8" />
+        </div>
+        <div className="space-y-2">
+          <h1 className="font-display text-h3 text-ink font-medium">
+            Call not completed
+          </h1>
+          <p className="text-body text-ink-soft">
+            That call didn&apos;t go through. Nothing was said, and nobody was bothered. Want to try again?
+          </p>
+        </div>
+        <div className="flex items-center justify-center gap-3 pt-2">
+          <Link href={`/calls/new?personId=${call?.person_id || ""}`}>
             <Button variant="primary">Try again</Button>
           </Link>
           <Link href="/home">
@@ -261,7 +293,6 @@ export default function CallDetailPage() {
         1. TOP ROW: BACK LINK, HEADLINE, CAPTION, STATUS, ACTIONS 
       */}
       <div className="space-y-4">
-        {/* Back Link */}
         <Link
           href={`/people?selected=${call?.person_id || ""}`}
           className="inline-flex items-center gap-1.5 text-small text-ink-soft hover:text-ink transition-colors font-medium"
@@ -270,12 +301,11 @@ export default function CallDetailPage() {
           <span>← {nickname}</span>
         </Link>
 
-        {/* Header Content */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-3">
               <h1 className="font-display text-h3 md:text-display-lg text-ink font-medium tracking-tight">
-                Sunday chat with {nickname}
+                Conversation with {nickname}
               </h1>
               <Chip variant="sage" size="sm" className="font-semibold">
                 Completed
@@ -290,33 +320,41 @@ export default function CallDetailPage() {
                       day: "numeric",
                       month: "short",
                     })
-                  : "Sun 27 Sep"}
+                  : ""}
               </span>
               <span>·</span>
               <Clock className="size-4 text-ink-faint" />
-              <span>6:32 pm</span>
+              <span>
+                {call?.created_at
+                  ? new Date(call.created_at).toLocaleTimeString("en-US", {
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })
+                  : ""}
+              </span>
               <span>·</span>
               <span className="tabular-nums">
                 {call?.duration_seconds
-                  ? `${Math.round(call.duration_seconds / 60)} min`
-                  : "8 min"}
+                  ? `${Math.max(1, Math.round(call.duration_seconds / 60))} min`
+                  : "Check-in"}
               </span>
             </p>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex items-center gap-2.5 self-start md:self-auto">
-            <Button
-              variant="quiet"
-              size="sm"
-              onClick={handleShare}
-              className="gap-2"
-            >
-              <Share2 className="size-4" />
-              <span>Share summary</span>
-            </Button>
+            {summary && (
+              <Button
+                variant="quiet"
+                size="sm"
+                onClick={handleShare}
+                className="gap-2"
+              >
+                <Share2 className="size-4" />
+                <span>Share summary</span>
+              </Button>
+            )}
 
-            <Link href={`/calls/${callId}/live?demo=true`}>
+            <Link href={`/calls/new?personId=${call?.person_id || ""}`}>
               <Button variant="primary" size="sm" className="gap-2 shadow-xs">
                 <PhoneCall className="size-4" />
                 <span>Call again</span>
@@ -327,50 +365,52 @@ export default function CallDetailPage() {
       </div>
 
       {/* 
-        2. MAIN TWO-COLUMN GRID: 
-        Left 7 cols: Transcript Card
-        Right 5 cols: Summary Card & Memory Panel
+        2. MAIN TWO-COLUMN GRID 
       */}
       <div className="grid gap-8 lg:grid-cols-12 items-start">
         {/* LEFT 7 COLS: TRANSCRIPT CARD */}
         <div className="lg:col-span-7">
           <Card className="rounded-[28px] bg-cream-50 border border-cream-200 shadow-sm overflow-hidden flex flex-col">
-            {/* Sticky Header with Search */}
             <div className="sticky top-0 z-10 p-5 bg-cream-50/90 backdrop-blur-xl border-b border-cream-200/80 flex items-center justify-between gap-4">
               <h2 className="font-display text-h5 text-ink font-medium">
                 Conversation
               </h2>
 
-              {/* Search input */}
-              <div className="relative max-w-xs w-full">
-                <Search className="size-4 text-ink-faint absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search this conversation"
-                  className="w-full pl-9 pr-3 py-1.5 rounded-full bg-cream-100/70 border border-cream-200/80 text-small text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-terracotta/30"
-                />
-              </div>
+              {displayTurns.length > 0 && (
+                <div className="relative max-w-xs w-full">
+                  <Search className="size-4 text-ink-faint absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search this conversation"
+                    className="w-full pl-9 pr-3 py-1.5 rounded-full bg-cream-100/70 border border-cream-200/80 text-small text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-terracotta/30"
+                  />
+                </div>
+              )}
             </div>
 
-            {/* Transcript turns */}
             <div className="p-6 space-y-5 max-h-[640px] overflow-y-auto">
               {filteredTurns.length === 0 ? (
-                <div className="py-12 text-center text-ink-soft">
-                  <p className="text-small">
-                    {searchQuery
-                      ? "No turns match your search."
-                      : "No transcript recorded for this call."}
+                <div className="py-12 text-center text-ink-soft space-y-1">
+                  <p className="text-body font-medium text-ink">
+                    No conversations yet. Your first one is a few taps away.
+                  </p>
+                  <p className="text-small text-ink-faint">
+                    Transcript turns will appear here as you speak with Vaani.
                   </p>
                 </div>
               ) : (
-                filteredTurns.map((turn, i) => {
+                filteredTurns.map((turn) => {
                   const isVaani = turn.speaker === "vaani";
                   return (
-                    <div key={turn.id || i} className="flex items-start gap-3.5">
-                      {/* Avatar */}
-                      <div className="shrink-0 mt-0.5">
+                    <div
+                      key={turn.id}
+                      className={`flex items-start gap-3.5 ${
+                        isVaani ? "pl-0" : "pl-3 md:pl-5"
+                      }`}
+                    >
+                      <div className="shrink-0 mt-1">
                         {isVaani ? (
                           <div className="size-7 rounded-full bg-gradient-to-tr from-terracotta to-warm-amber shadow-xs flex items-center justify-center">
                             <span className="size-2 rounded-full bg-white" />
@@ -380,24 +420,23 @@ export default function CallDetailPage() {
                             name={nickname}
                             tint={person.tint || "#F2A65A"}
                             size="sm"
-                            className="!size-7 text-[11px]"
+                            className="!size-7"
                           />
                         )}
                       </div>
 
-                      {/* Content */}
-                      <div className="flex-1 space-y-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-semibold uppercase tracking-wider text-ink-soft">
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-caption font-semibold uppercase tracking-wider text-ink-soft">
                             {isVaani ? "Vaani" : nickname}
                           </span>
-                          {turn.at_ms ? (
-                            <span className="text-[11px] font-mono tabular-nums text-ink-faint">
+                          {turn.at_ms > 0 && (
+                            <span className="text-[11px] font-mono text-ink-faint">
                               {formatTimestamp(turn.at_ms)}
                             </span>
-                          ) : null}
+                          )}
                         </div>
-                        <p className="text-small text-ink leading-relaxed">
+                        <p className="text-body text-ink leading-relaxed">
                           {turn.text}
                         </p>
                       </div>
@@ -411,104 +450,106 @@ export default function CallDetailPage() {
 
         {/* RIGHT 5 COLS: SUMMARY CARD & MEMORY PANEL */}
         <div className="lg:col-span-5 space-y-6">
-          {/* 
-            Summary Card (Four Blocks + Note) 
-          */}
-          <Card className="rounded-[28px] bg-cream-50 border border-cream-200 shadow-sm p-6 md:p-7 space-y-6">
-            {/* Vaani's note to you */}
-            {moodNote && (
-              <div className="p-4 rounded-2xl bg-amber-soft/20 border border-amber-soft/40 space-y-1">
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-terracotta-deep flex items-center gap-1.5">
-                  <Sparkles className="size-3.5" />
-                  <span>Vaani&apos;s note to you</span>
-                </div>
-                <p className="text-body font-display italic text-ink leading-relaxed">
-                  &ldquo;{moodNote}&rdquo;
+          <Card className="rounded-[28px] bg-cream-50 border border-cream-200 shadow-sm p-6 space-y-6">
+            <h2 className="font-display text-h5 text-ink font-medium">
+              Summary
+            </h2>
+
+            {!summary ? (
+              <div className="py-8 text-center text-ink-soft space-y-1">
+                <p className="text-body font-medium text-ink">
+                  When Vaani finishes a call, the story shows up here.
+                </p>
+                <p className="text-small text-ink-faint">
+                  Highlights and memories will be organized automatically.
                 </p>
               </div>
-            )}
+            ) : (
+              <>
+                {moodNote && (
+                  <div className="p-4 rounded-2xl bg-amber-soft/20 border border-amber-soft/40 space-y-1.5">
+                    <div className="text-caption font-semibold uppercase tracking-wider text-terracotta-deep flex items-center gap-1.5">
+                      <Sparkles className="size-3.5" />
+                      <span>Vaani&apos;s note to you</span>
+                    </div>
+                    <p className="text-body font-display italic text-ink leading-relaxed">
+                      &ldquo;{moodNote}&rdquo;
+                    </p>
+                  </div>
+                )}
 
-            {/* Block 1: What happened */}
-            <div className="space-y-1.5">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-faint">
-                What happened
-              </h3>
-              <p className="text-body text-ink leading-relaxed">
-                {summary?.what_happened}
-              </p>
-            </div>
+                {summary.what_happened && (
+                  <div className="space-y-1.5">
+                    <h3 className="text-caption font-semibold uppercase tracking-wider text-ink-faint">
+                      What happened
+                    </h3>
+                    <p className="text-small text-ink leading-relaxed">
+                      {summary.what_happened}
+                    </p>
+                  </div>
+                )}
 
-            {/* Block 2: Important updates */}
-            {summary?.important_updates?.length > 0 && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-faint">
-                    Important updates
-                  </h3>
-                  {summary.needs_attention && (
-                    <Chip variant="terracotta" size="sm">
-                      Worth a look
-                    </Chip>
-                  )}
-                </div>
-                <ul className="space-y-2">
-                  {summary.important_updates.map((item: string, idx: number) => (
-                    <li
-                      key={idx}
-                      className="flex items-start gap-2.5 text-small text-ink leading-relaxed"
-                    >
-                      <span className="size-1.5 rounded-full bg-terracotta mt-2 shrink-0" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+                {summary.important_updates && summary.important_updates.length > 0 && (
+                  <div className="space-y-2">
+                    <h3 className="text-caption font-semibold uppercase tracking-wider text-ink-faint">
+                      Important updates
+                    </h3>
+                    <ul className="space-y-1.5">
+                      {summary.important_updates.map((update, idx) => (
+                        <li
+                          key={idx}
+                          className="flex items-start gap-2 text-small text-ink"
+                        >
+                          <span className="size-1.5 rounded-full bg-terracotta mt-2 shrink-0" />
+                          <span>{update}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
-            {/* Block 3: Things worth remembering */}
-            {summary?.worth_remembering?.length > 0 && (
-              <div className="space-y-2">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-faint">
-                  Things worth remembering
-                </h3>
-                <ul className="space-y-2">
-                  {summary.worth_remembering.map((item: string, idx: number) => (
-                    <li
-                      key={idx}
-                      className="flex items-start gap-2.5 text-small text-ink leading-relaxed"
-                    >
-                      <Heart className="size-3.5 text-terracotta mt-1 shrink-0" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+                {summary.worth_remembering && summary.worth_remembering.length > 0 && (
+                  <div className="space-y-2">
+                    <h3 className="text-caption font-semibold uppercase tracking-wider text-ink-faint">
+                      Things worth remembering
+                    </h3>
+                    <div className="space-y-2">
+                      {summary.worth_remembering.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="p-3 rounded-xl bg-cream-100 border border-cream-200/80 text-small text-ink flex items-start gap-2"
+                        >
+                          <Heart className="size-3.5 text-terracotta shrink-0 mt-0.5" />
+                          <span>{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-            {/* Block 4: For your next call */}
-            {summary?.next_call?.length > 0 && (
-              <div className="space-y-2">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-faint">
-                  For your next call
-                </h3>
-                <ul className="space-y-2">
-                  {summary.next_call.map((item: string, idx: number) => (
-                    <li
-                      key={idx}
-                      className="flex items-start gap-2.5 text-small text-ink-soft leading-relaxed"
-                    >
-                      <span className="size-1.5 rounded-full bg-honey mt-2 shrink-0" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+                {summary.next_call && summary.next_call.length > 0 && (
+                  <div className="space-y-2">
+                    <h3 className="text-caption font-semibold uppercase tracking-wider text-ink-faint">
+                      For your next call
+                    </h3>
+                    <ul className="space-y-1.5">
+                      {summary.next_call.map((item, idx) => (
+                        <li
+                          key={idx}
+                          className="flex items-start gap-2 text-small text-ink-soft"
+                        >
+                          <span className="size-1.5 rounded-full bg-honey mt-2 shrink-0" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </>
             )}
           </Card>
 
-          {/* 
-            Memory Panel ("Vaani will remember") 
-          */}
+          {/* Memory Panel */}
           <Card className="rounded-[28px] bg-cream-50 border border-cream-200 shadow-sm p-6 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -522,7 +563,7 @@ export default function CallDetailPage() {
 
             {memories.length === 0 ? (
               <p className="text-small text-ink-faint py-3 italic">
-                Nothing new to remember from this call.
+                Nothing here yet. After your first call, Vaani will keep the little things that matter.
               </p>
             ) : (
               <div className="space-y-3">
