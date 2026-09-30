@@ -19,6 +19,8 @@ import { createClient } from "@/lib/supabase/client";
 import { VoicePicker } from "@/components/app/voice-picker";
 import { DEFAULT_FEMALE_VOICE } from "@/lib/voices";
 
+import { inferPronounsFromRelationship, type PronounType } from "@/lib/pronouns";
+
 export interface PersonRecord {
   id: string;
   name: string;
@@ -30,6 +32,7 @@ export interface PersonRecord {
   language?: string;
   memory_enabled?: boolean;
   tint?: string;
+  pronouns?: PronounType | string;
 }
 
 interface PersonDialogProps {
@@ -62,6 +65,7 @@ export function PersonDialog({
   const [name, setName] = useState("");
   const [nickname, setNickname] = useState("");
   const [relationship, setRelationship] = useState("Mom");
+  const [pronouns, setPronouns] = useState<PronounType>("she");
   const [phone, setPhone] = useState("");
   const [voice, setVoice] = useState(DEFAULT_FEMALE_VOICE.id);
   const [tone, setTone] = useState("Warm");
@@ -74,7 +78,11 @@ export function PersonDialog({
     if (person) {
       setName(person.name || "");
       setNickname(person.nickname || "");
-      setRelationship(person.relationship || "Mom");
+      const rel = person.relationship || "Mom";
+      setRelationship(rel);
+      setPronouns(
+        (person.pronouns as PronounType) || inferPronounsFromRelationship(rel)
+      );
       setPhone(person.phone_e164 || "");
       setVoice(person.voice || DEFAULT_FEMALE_VOICE.id);
       setTone(person.tone || "Warm");
@@ -84,6 +92,7 @@ export function PersonDialog({
       setName("");
       setNickname("");
       setRelationship("Mom");
+      setPronouns(inferPronounsFromRelationship("Mom"));
       setPhone("");
       setVoice(DEFAULT_FEMALE_VOICE.id);
       setTone("Warm");
@@ -129,6 +138,7 @@ export function PersonDialog({
             name: trimmedName,
             nickname: nickname.trim() || trimmedName,
             relationship,
+            pronouns,
             phone_e164: phoneValidation.e164,
             voice,
             tone,
@@ -150,6 +160,7 @@ export function PersonDialog({
             name: trimmedName,
             nickname: nickname.trim() || trimmedName,
             relationship,
+            pronouns,
             phone_e164: phoneValidation.e164,
             voice,
             tone,
@@ -233,10 +244,37 @@ export function PersonDialog({
                   key={rel}
                   variant={relationship === rel ? "terracotta" : "neutral"}
                   size="sm"
-                  onClick={() => setRelationship(rel)}
+                  onClick={() => {
+                    setRelationship(rel);
+                    setPronouns(inferPronounsFromRelationship(rel));
+                  }}
                   className="cursor-pointer transition duration-150"
                 >
                   {rel}
+                </Chip>
+              ))}
+            </div>
+          </div>
+
+          {/* Pronouns */}
+          <div className="space-y-2">
+            <label className="text-small font-medium text-ink">
+              How should Vaani refer to them?
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { id: "she", label: "She" },
+                { id: "he", label: "He" },
+                { id: "they", label: "They" },
+              ].map((p) => (
+                <Chip
+                  key={p.id}
+                  variant={pronouns === p.id ? "terracotta" : "neutral"}
+                  size="sm"
+                  onClick={() => setPronouns(p.id as PronounType)}
+                  className="cursor-pointer transition duration-150"
+                >
+                  {p.label}
                 </Chip>
               ))}
             </div>

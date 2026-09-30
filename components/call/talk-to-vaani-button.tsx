@@ -7,6 +7,8 @@ import { Button, type ButtonProps } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { PhoneCall, Loader2 } from "lucide-react";
 
+import { inferPronounsFromRelationship } from "@/lib/pronouns";
+
 interface TalkToVaaniButtonProps extends ButtonProps {
   children?: React.ReactNode;
   personName?: string;
@@ -69,6 +71,7 @@ export function TalkToVaaniButton({
             name: personName,
             nickname: personName,
             relationship,
+            pronouns: inferPronounsFromRelationship(relationship),
             phone_e164: null,
             language: "en",
             voice: "claire",

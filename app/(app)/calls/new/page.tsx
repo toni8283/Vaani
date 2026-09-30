@@ -28,6 +28,14 @@ import {
 
 import { VoicePicker } from "@/components/app/voice-picker";
 import { DEFAULT_FEMALE_VOICE } from "@/lib/voices";
+import {
+  getPronouns,
+  inferPronounsFromRelationship,
+  getQuestionsPlaceholder,
+  getPersonalMessagePlaceholder,
+  getSuggestions,
+  type PronounType,
+} from "@/lib/pronouns";
 
 const RELATIONSHIPS = [
   "Mom",
@@ -40,14 +48,6 @@ const RELATIONSHIPS = [
 ];
 
 const TONES = ["Warm", "Cheerful", "Gentle", "Playful"];
-
-const SUGGESTIONS = [
-  "How has she been feeling?",
-  "How was her week?",
-  "Follow up on last time",
-  "Does she need any help?",
-  "Ask about her plans.",
-];
 
 export default function CreateCallWizardPage() {
   return (
@@ -76,6 +76,9 @@ function CreateCallWizardContent() {
   const [name, setName] = useState("");
   const [nickname, setNickname] = useState("");
   const [relationship, setRelationship] = useState("Mom");
+  const [pronouns, setPronouns] = useState<PronounType>(
+    inferPronounsFromRelationship("Mom")
+  );
   const [phone, setPhone] = useState("");
 
   // Step 2: Voice
@@ -107,6 +110,7 @@ function CreateCallWizardContent() {
       setName("You");
       setNickname("you");
       setRelationship("Someone else");
+      setPronouns("they");
       setPhone(pendingPhone);
       setIsDemo(true);
       sessionStorage.removeItem("vaani:pending-phone");
@@ -157,7 +161,9 @@ function CreateCallWizardContent() {
     setPersonId(p.id);
     setName(p.name);
     setNickname(p.nickname || p.name);
-    setRelationship(p.relationship || "Mom");
+    const rel = p.relationship || "Mom";
+    setRelationship(rel);
+    setPronouns((p.pronouns as PronounType) || inferPronounsFromRelationship(rel));
     setPhone(p.phone_e164 || "");
     if (p.voice) setVoice(p.voice);
     if (p.tone) setTone(p.tone);
@@ -171,6 +177,7 @@ function CreateCallWizardContent() {
     setName("");
     setNickname("");
     setRelationship("Mom");
+    setPronouns(inferPronounsFromRelationship("Mom"));
     setPhone("");
     setIsChoosingExisting(false);
   };
@@ -285,10 +292,14 @@ function CreateCallWizardContent() {
 
       // 1. Create or reuse person
       if (targetPersonId) {
-        // Ensure consent is confirmed for the selected person
+        // Update voice, tone, pronouns, and phone if reused
         await supabase
           .from("people")
           .update({
+            voice,
+            tone,
+            pronouns,
+            relationship,
             consent_confirmed: hasPhone ? true : consentConfirmed,
             phone_e164: phoneE164,
           })
@@ -311,6 +322,10 @@ function CreateCallWizardContent() {
           await supabase
             .from("people")
             .update({
+              voice,
+              tone,
+              pronouns,
+              relationship,
               consent_confirmed: true,
               phone_e164: phoneE164,
             })
@@ -324,6 +339,7 @@ function CreateCallWizardContent() {
               name: name.trim(),
               nickname: nickname.trim() || name.trim(),
               relationship,
+              pronouns,
               phone_e164: phoneE164,
               voice,
               tone,
@@ -585,10 +601,39 @@ function CreateCallWizardContent() {
                         key={rel}
                         variant={relationship === rel ? "terracotta" : "neutral"}
                         size="sm"
-                        onClick={() => !isChoosingExisting && setRelationship(rel)}
+                        onClick={() => {
+                          if (!isChoosingExisting) {
+                            setRelationship(rel);
+                            setPronouns(inferPronounsFromRelationship(rel));
+                          }
+                        }}
                         className={isChoosingExisting ? "opacity-75 cursor-default" : "cursor-pointer"}
                       >
                         {rel}
+                      </Chip>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Pronouns Chips */}
+                <div className="space-y-2">
+                  <label className="text-small font-medium text-ink">
+                    How should Vaani refer to them?
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { id: "she", label: "She" },
+                      { id: "he", label: "He" },
+                      { id: "they", label: "They" },
+                    ].map((p) => (
+                      <Chip
+                        key={p.id}
+                        variant={pronouns === p.id ? "terracotta" : "neutral"}
+                        size="sm"
+                        onClick={() => !isChoosingExisting && setPronouns(p.id as PronounType)}
+                        className={isChoosingExisting ? "opacity-75 cursor-default" : "cursor-pointer"}
+                      >
+                        {p.label}
                       </Chip>
                     ))}
                   </div>
@@ -711,7 +756,7 @@ function CreateCallWizardContent() {
                 <textarea
                   value={questions}
                   onChange={(e) => setQuestions(e.target.value)}
-                  placeholder="Ask how her knee is doing. Find out if she's going to Meena's wedding. Tell her I'll visit in March."
+                  placeholder={getQuestionsPlaceholder(pronouns)}
                   rows={4}
                   className="w-full p-4 rounded-2xl bg-cream-100/60 border border-cream-200 text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-terracotta/40 text-body leading-relaxed resize-none"
                 />
@@ -720,7 +765,7 @@ function CreateCallWizardContent() {
                 <div className="space-y-1.5 pt-1">
                   <span className="text-xs text-ink-faint">Tap to add:</span>
                   <div className="flex flex-wrap gap-2">
-                    {SUGGESTIONS.map((s) => (
+                    {getSuggestions(pronouns).map((s) => (
                       <Chip
                         key={s}
                         variant="neutral"
@@ -743,7 +788,7 @@ function CreateCallWizardContent() {
                 <Input
                   value={personalMessage}
                   onChange={(e) => setPersonalMessage(e.target.value)}
-                  placeholder="Something you'd like her to hear, in your own words."
+                  placeholder={getPersonalMessagePlaceholder(pronouns)}
                 />
               </div>
 
